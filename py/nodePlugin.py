@@ -72,8 +72,8 @@ class PhotoshopToComfyUI:
             self.maskImgDir = os.path.join(nodepath, "data", "ps_inputs", "PS_mask.png")
             self.configJson = os.path.join(nodepath, "data", "ps_inputs", "config.json")
         except:
-            time.sleep(0.5)
-            if retry_count < 4:
+            time.sleep(1)
+            if retry_count < 10:
                 self.LoadDir(retry_count + 1)
             else:
                 raise Exception(
@@ -173,17 +173,19 @@ class ComfyUIToPhotoshop(SaveImage):
         except Exception as e:
             print(f"_PS_ error on send2Ps: {e}")
 
-    def execute(
+    async def execute(
         self,
         output: torch.Tensor,
         filename_prefix="PS_OUTPUTS",
         prompt=None,
         extra_pnginfo=None,
     ):
+        # x = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
+        # asyncio.run(self.connect_to_backend(x["ui"]["images"][0]["filename"]))
+        # return x
         x = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
-        asyncio.run(self.connect_to_backend(x["ui"]["images"][0]["filename"]))
+        await self.connect_to_backend(x["ui"]["images"][0]["filename"])
         return x
-
 
 class ClipPass:
     @classmethod
