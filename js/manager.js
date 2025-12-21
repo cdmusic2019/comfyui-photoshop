@@ -1,3 +1,4 @@
+//The node now supports the latest version of :rgthree, version 1.0.2512112053, and the nightly build from the same day.
 import { app as app } from "../../../scripts/app.js";
 import { api as api } from "../../../scripts/api.js";
 import { sendMsg, addListener } from "./connection.js";
@@ -6,6 +7,72 @@ import { photoshopNode } from "./nodestyle.js";
 export const nodever = "1.9.3";
 let workflowSwitcher = "";
 let rndrModeSwitcher = "";
+
+// --- Core repair function ---
+function handleSwitcherClick(targetIndex, switcherNode) {
+    try {
+        const targetIdx = parseInt(targetIndex);
+        if (!switcherNode || !switcherNode.widgets) {
+            console.error("🔹 Switcher node not found.");
+            return;
+        }
+
+        const widgets = switcherNode.widgets;                  
+            widgets.forEach((widget, index) => {         
+            const shouldBeOn = (index === targetIdx);
+            const isRgthreeWidget = (widget.type === "RGTHREE_TOGGLE_AND_NAV") || (widget.value && typeof widget.value === 'object' && 'toggled' in widget.value);
+            let valueChanged = false;
+
+            // 1. Modify the data layer
+            if (isRgthreeWidget) {
+                // If the current state does not match the target state, make modifications.
+                if (widget.value.toggled !== shouldBeOn) {
+                    widget.value.toggled = shouldBeOn;
+                    valueChanged = true;
+                }
+            } else {
+                   if (widget.value !== shouldBeOn) {
+                    widget.value = shouldBeOn;
+                    valueChanged = true;
+                }
+            }
+
+            // 2.If the target is activated, or if any state changes occur, the node needs to be notified.
+            if (valueChanged || shouldBeOn) {
+                
+              
+                if (isRgthreeWidget && widget.doModeChange) {
+                    // doModeChange(forceState, skipOtherCheck)
+                   
+                    widget.doModeChange(shouldBeOn, true);
+                }
+                                
+                if (widget.callback) {
+                    try {
+                         
+                         widget.callback(widget.value, app.canvas, switcherNode, {x:0, y:0}, {});
+                    } catch(e) { /* Ignore errors */ }
+                }
+
+               
+                if (switcherNode.onWidgetChanged) {
+                    switcherNode.onWidgetChanged(widget.name, widget.value, null, widget);
+                }
+            }
+        });
+
+        // 3. Force refresh the chart (Re-compute)
+        
+        switcherNode.setDirtyCanvas(true, true);
+        app.graph.setDirtyCanvas(true, true);
+        
+        
+        if (switcherNode.onResize) switcherNode.onResize(switcherNode.size);
+
+    } catch (error) {
+        console.error("🔹 Error in handleSwitcherClick:", error);
+    }
+}
 
 addListener("photoshopConnected", () => {
   console.log("🔹photoshopConnected");
@@ -19,7 +86,8 @@ addListener("photoshopConnected", () => {
 
 addListener("workflow", (data) => {
   try {
-    workflowSwitcher.widgets[data].callback();
+    console.log("🔹 Received workflow selection index:", data);
+    handleSwitcherClick(data, workflowSwitcher);
   } catch (error) {
     console.error("🔹 Error in workflow listener:", error);
   }
@@ -57,7 +125,8 @@ addListener("queue", (data) => {
 
 addListener("rndrMode", (data) => {
   try {
-    rndrModeSwitcher.widgets[data].callback();
+    console.log("🔹 Received rndrMode selection index:", data);
+    handleSwitcherClick(data, rndrModeSwitcher);
   } catch (error) {
     console.error("🔹 Error in rndrMode listener:", error);
   }
@@ -67,16 +136,34 @@ const SwitcherWidgetNames = (switcher) => {
   try {
     let widgetNames = [];
     let widgets = switcher.widgets;
+    
+    if (!widgets) return widgetNames;
+
     widgets.forEach((widget) => {
-      if (widget.value) {
-        widgetNames.push({ name: String(widget.name.replace("Enable ", "")), selected: true });
+      let isEnabled = false;
+      let displayName = "";
+
+      // fast_groups_muter_1.025
+      if (widget.type === "RGTHREE_TOGGLE_AND_NAV" || (widget.value && typeof widget.value === 'object' && 'toggled' in widget.value)) {
+        isEnabled = widget.value.toggled;
+        displayName = widget.label || widget.name || "Unknown"; 
       } else {
-        widgetNames.push({ name: String(widget.name.replace("Enable ", "")) });
+        isEnabled = !!widget.value;
+        displayName = widget.name || "";
+      }
+
+      displayName = String(displayName.replace("Enable ", ""));
+
+      if (isEnabled) {
+        widgetNames.push({ name: displayName, selected: true });
+      } else {
+        widgetNames.push({ name: displayName });
       }
     });
     return widgetNames;
   } catch (error) {
     console.error("🔹 Error in SwitcherWidgetNames:", error);
+    return [];
   }
 };
 
@@ -93,7 +180,6 @@ app.registerExtension({
       });
     }
   },
-
   onProgressUpdate(event) {
     try {
       if (!this.connected) return;
@@ -112,34 +198,35 @@ app.registerExtension({
       console.error("🔹 Error in onProgressUpdate:", error);
     }
   },
-
   async nodeCreated(node) {
     try {
-      if (!workflowSwitcher) {
-        if (
-          node.comfyClass == "Fast Groups Muter (rgthree)" &&
-          ((await node.color) == "#2b4557" ||
-            (await node.bgcolor) == "#2b4557" ||
-            (await node?.title?.startsWith("📁")))
-        ) {
-          workflowSwitcher = node;
-          console.log("🔹 workflowSwitcher detected: ", workflowSwitcher);
-          workflowswitcherchecker();
-          return;
-        }
-      }
+      if (node.comfyClass === "Fast Groups Muter (rgthree)") {
+        const getColor = (n) => n.color || n.bgcolor;
+        const nodeColor = getColor(node);
+        const nodeTitle = node.title || "";
 
-      if (!rndrModeSwitcher) {
-        if (
-          node.comfyClass == "Fast Groups Muter (rgthree)" &&
-          ((await node.color) == "#4e5e4e" ||
-            (await node.bgcolor) == "#4e5e4e" ||
-            (await node?.title?.startsWith("⚙️")))
-        ) {
-          rndrModeSwitcher = node;
-          console.log("🔹 rndrModeSwitcher detected: ", rndrModeSwitcher);
-          rndrswitcherchecker();
-          return;
+        if (!workflowSwitcher) {
+          if (
+            nodeColor == "#2b4557" ||
+            nodeTitle.startsWith("📁")
+          ) {
+            workflowSwitcher = node;
+            console.log("🔹 workflowSwitcher detected: ", workflowSwitcher);
+            workflowswitcherchecker();
+            return;
+          }
+        }
+        
+        if (!rndrModeSwitcher) {
+          if (
+            nodeColor == "#4e5e4e" ||
+            nodeTitle.startsWith("⚙️")
+          ) {
+            rndrModeSwitcher = node;
+            console.log("🔹 rndrModeSwitcher detected: ", rndrModeSwitcher);
+            rndrswitcherchecker();
+            return;
+          }
         }
       }
     } catch (error) {
@@ -162,11 +249,9 @@ async function getWorkflow(name) {
 export async function loadWorkflow(workflowName) {
   const supportedLocales = ["ja-JP", "ko-KR", "zh-TW", "zh-CN"];
   let currentLocale = localStorage.getItem("AGL.Locale");
-
   if (!supportedLocales.includes(currentLocale)) {
     currentLocale = "en-US";
   }
-
   console.log("🔹 Load workflow for this language:", currentLocale);
   workflowName = workflowName + "_" + currentLocale;
   try {
@@ -189,6 +274,7 @@ api.addEventListener("execution_start", ({ detail }) => {
     console.error("🔹 Error in execution_start listener:", error);
   }
 });
+
 api.addEventListener("executing", ({ detail }) => {
   try {
     if (!detail) {
@@ -200,6 +286,7 @@ api.addEventListener("executing", ({ detail }) => {
     console.error("🔹 Error in executing listener:", error);
   }
 });
+
 api.addEventListener("execution_error", ({ detail }) => {
   try {
     genrateStatus = "genrate_error";
@@ -208,6 +295,7 @@ api.addEventListener("execution_error", ({ detail }) => {
     console.error("🔹 Error in execution_error listener:", error);
   }
 });
+
 api.addEventListener("progress", ({ detail: { value, max } }) => {
   try {
     let progress = Math.floor((value / max) * 100);
@@ -222,18 +310,28 @@ api.addEventListener("progress", ({ detail: { value, max } }) => {
 export function appendMenuOption(nodeType, callbackFn) {
   const originalMenuOptions = nodeType.prototype.getExtraMenuOptions;
   nodeType.prototype.getExtraMenuOptions = function () {
-    const options = originalMenuOptions.apply(this, arguments);
+    const options = originalMenuOptions ? originalMenuOptions.apply(this, arguments) : [];
     callbackFn.apply(this, arguments);
     return options;
   };
 }
 
 function workflowswitcherchecker() {
-  let previousWorkflowWidgets = JSON.stringify(workflowSwitcher?.widgets);
+  if (!workflowSwitcher) return;
+  
+  const getWidgetStates = (node) => {
+    return JSON.stringify(node?.widgets?.map(w => ({
+      name: w.name, 
+      label: w.label, 
+      value: (w.value && typeof w.value === 'object' && 'toggled' in w.value) ? w.value.toggled : w.value
+    })));
+  };
 
+  let previousWorkflowWidgets = getWidgetStates(workflowSwitcher);
+  
   setInterval(() => {
     try {
-      const currentWorkflowWidgets = JSON.stringify(workflowSwitcher?.widgets);
+      const currentWorkflowWidgets = getWidgetStates(workflowSwitcher);
       if (currentWorkflowWidgets !== previousWorkflowWidgets) {
         console.log("Workflow switcher widgets have changed");
         sendMsg("Send_workflow", SwitcherWidgetNames(workflowSwitcher));
@@ -246,11 +344,21 @@ function workflowswitcherchecker() {
 }
 
 function rndrswitcherchecker() {
-  let previousRndrModeWidgets = JSON.stringify(rndrModeSwitcher?.widgets);
+  if (!rndrModeSwitcher) return;
 
+  const getWidgetStates = (node) => {
+    return JSON.stringify(node?.widgets?.map(w => ({
+      name: w.name, 
+      label: w.label, 
+      value: (w.value && typeof w.value === 'object' && 'toggled' in w.value) ? w.value.toggled : w.value
+    })));
+  };
+
+  let previousRndrModeWidgets = getWidgetStates(rndrModeSwitcher);
+  
   setInterval(() => {
     try {
-      const currentRndrModeWidgets = JSON.stringify(rndrModeSwitcher?.widgets);
+      const currentRndrModeWidgets = getWidgetStates(rndrModeSwitcher);
       if (currentRndrModeWidgets !== previousRndrModeWidgets) {
         console.log("Render mode switcher widgets have changed");
         sendMsg("Send_rndrMode", SwitcherWidgetNames(rndrModeSwitcher));
