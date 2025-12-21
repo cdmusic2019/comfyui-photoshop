@@ -1,0 +1,41 @@
+本版支持PS25.2及以上版本，可支持最新版 PS27.1
+
+主要优化部份
+
+ 一、 MASK修复。
+修复了蒙版在PS2025-2026版本下输出不正确问题（PS2024以下版本使用无需修复），在PS2025-2026版本中，未修复前输出的蒙版不干净，有灰色的混合图层。修复后的蒙版为正常的黑白通道，逻辑是，PS中有选区时输出黑底白图，白色区域为不透明，黑色为透明，如果PS无任何选区，则以文档尺寸输出白色蒙版，即默认文档大小作为蒙版输出。
+
+二、rgthree 支持
+修复了对rgthree 1.0.0以上版本的支持，目前支持到最新版本 rgthree-comfy  版本：1.0.2512112053，实际测试nightly版本也可以很好支持。如果安装时PS插件不能连接到comfyui ，可以手动安装 rgthree-comfy 一般可以解决。因为新版本的rgthree-comfy修改了一些属性和对象的实现方法，但升级后的插件是兼容以前的工作流的，不用担心。
+
+ 三、高清图像支持
+ 优化了从PS中获取图片时的质量问题，社区原版获取的是PS文档的预览图，图片质量低，放大时模糊，现优化为直接获取文档元数据，使用HTTP上传方式，直接获取高清图像，现逻辑，当需要获取整个文档数据并且尺寸不需要缩放时，直接获取高清，如果你需要使用裁剪模式，保持插件默认设置。
+
+
+
+
+-----------------------
+特别说明：
+插件属于作者 NimaNzrii 全权所有，项目地址：https://github.com/NimaNzrii/comfyui-photoshop ，根据License说明 ，未经NimaNzrii 书面同意请不要随意分发和售卖本插件。（BUG FIX：cdmusic）
+
+
+
+
+
+
+
+This version supports PS25.2 and above, and is compatible with the latest version PS27.1.
+
+Main Optimizations
+
+1. MASK Fix
+Fixed the issue where masks output incorrectly in PS2025–2026 versions (no fix needed for PS2024 and earlier). In PS2025–2026, masks output before the fix were not clean and contained gray mixed layers. After the fix, masks are normal black-and-white channels. The logic is as follows: when there is a selection in Photoshop, the output is a black background with a white map, where white areas represent opacity and black represents transparency. If there is no selection in Photoshop, a white mask matching the document dimensions is output, meaning the default document size is used as the mask output.
+
+2. rgthree Support
+Fixed support for rgthree versions above 1.0.0. Currently supports up to the latest version rgthree-comfy: 1.0.2512112053. Actual testing shows good compatibility with nightly versions as well. If the PS plugin cannot connect to ComfyUI during installation, manually installing rgthree-comfy usually resolves the issue. The new version of rgthree-comfy has modified some property and object implementation methods, but the upgraded plugin remains compatible with previous workflows, so no worries.
+
+3. High-Definition Image Support
+Optimized image quality when retrieving images from Photoshop. The original community version retrieved preview images from PS documents, resulting in low quality and blurriness when zoomed in. Now, the plugin directly retrieves document metadata using HTTP upload to obtain high-definition images. The current logic is as follows: when retrieving the entire document data without scaling, high-definition images are directly obtained. If you need to use cropping mode, keep the plugin’s default settings.
+
+Special Notes:
+The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
