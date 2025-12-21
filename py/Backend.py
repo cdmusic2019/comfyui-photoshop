@@ -7,7 +7,49 @@ import json
 import base64
 from aiohttp import web, WSMsgType
 import folder_paths
+from aiohttp import web, WSMsgType
 from server import PromptServer
+
+
+
+# ps_inputs_directory = os.path.join(nodepath, "data", "ps_inputs")
+
+# Add an HTTP upload endpoint
+@PromptServer.instance.routes.post("/ps/upload_canvas_binary")
+async def upload_canvas_binary(request):
+    try:
+        # The detection catalog exists
+        os.makedirs(ps_inputs_directory, exist_ok=True)
+        
+        # Get filename
+        filename = request.headers.get('X-Filename', 'PS_canvas.png')
+        filepath = os.path.join(ps_inputs_directory, filename)
+        
+        # Read binary data directly
+        data = await request.read()
+        
+        print(f"# PS: Received binary data, size: {len(data)} bytes")
+        
+        
+        with open(filepath, 'wb') as f:
+            f.write(data)
+        
+        file_size = os.path.getsize(filepath)
+        print(f"# PS: Canvas saved: {filepath} ({file_size} bytes)")
+        
+        return web.json_response({
+            "success": True,
+            "filename": filename,
+            "size": file_size
+        })
+        
+    except Exception as e:
+        print(f"# PS: Upload error: {e}")
+        import traceback
+        traceback.print_exc()
+        return web.json_response({"success": False, "error": str(e)}, status=500)
+
+
 
 # Set up paths
 nodepath = os.path.join(
@@ -139,9 +181,11 @@ async def handle_message(client_id, platform, data):
 
     elif platform == "ps":
         try:
-            # ابتدا پردازش کلیدهای دیگر
-            if "canvasBase64" in msg:
-                await save_file(msg["canvasBase64"], "PS_canvas.png")
+             # Add file upload method               
+            if "canvasBase64" in msg and msg["canvasBase64"] is not None:
+                canvas_data = msg["canvasBase64"]
+                if canvas_data != "HTTP_UPLOADED" and canvas_data:
+                    await save_file(canvas_data, "PS_canvas.png")
             if "maskBase64" in msg:
                 await save_file(msg["maskBase64"], "PS_mask.png")
             if "configdata" in msg:
