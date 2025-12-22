@@ -9,7 +9,7 @@
 修复了对rgthree 1.0.0以上版本的支持，目前支持到最新版本 rgthree-comfy  版本：1.0.2512112053，实际测试nightly版本也可以很好支持。如果安装时PS插件不能连接到comfyui ，可以手动安装 rgthree-comfy 一般可以解决。因为新版本的rgthree-comfy修改了一些属性和对象的实现方法，但升级后的插件是兼容以前的工作流的，不用担心。
 
  三、高清图像支持
- 优化了从PS中获取图片时的质量问题，社区原版获取的是PS文档的预览图，图片质量低，放大时模糊，现优化为直接获取文档元数据，使用HTTP上传方式，直接获取高清图像，现逻辑，当需要获取整个文档数据并且尺寸不需要缩放时，直接获取高清，如果你需要使用裁剪模式，保持插件默认设置。
+ 优化了从PS中获取图片时的质量问题，社区原版获取的是PS文档的预览图，图片文件很小，放大时模糊，现优化为直接获取文档元数据，相当于RAW格式，文件为未压缩的PNG格式，一般1024*1024图片实际大小3M左右，2048*2048为12M左右，弃用BASE64编码方式传递，使用二进制传送到comfyui端。现支持全尺寸，裁剪模式，以及实时绘画。  
 
 
 
@@ -35,7 +35,8 @@ Fixed the issue where masks output incorrectly in PS2025–2026 versions (no fix
 Fixed support for rgthree versions above 1.0.0. Currently supports up to the latest version rgthree-comfy: 1.0.2512112053. Actual testing shows good compatibility with nightly versions as well. If the PS plugin cannot connect to ComfyUI during installation, manually installing rgthree-comfy usually resolves the issue. The new version of rgthree-comfy has modified some property and object implementation methods, but the upgraded plugin remains compatible with previous workflows, so no worries.
 
 3. High-Definition Image Support
-Optimized image quality when retrieving images from Photoshop. The original community version retrieved preview images from PS documents, resulting in low quality and blurriness when zoomed in. Now, the plugin directly retrieves document metadata using HTTP upload to obtain high-definition images. The current logic is as follows: when retrieving the entire document data without scaling, high-definition images are directly obtained. If you need to use cropping mode, keep the plugin’s default settings.
+The quality of images retrieved from Photoshop has been optimized. The original community version retrieved preview images of the Photoshop document, resulting in small file sizes and blurriness when zoomed in. The current version directly retrieves the document's metadata, equivalent to RAW format, with uncompressed PNG files. A typical 1024x1024 image is approximately 3MB in size, and a 2048x2048 image is approximately 12MB. Base64 encoding has been abandoned in favor of binary transmission to the ComfyUI client. Full-size, cropped mode, and real-time drawing are now supported.
 
 Special Notes:
+
 The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
