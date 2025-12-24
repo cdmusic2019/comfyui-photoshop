@@ -12,6 +12,9 @@
  优化了从PS中获取图片时的质量问题，社区原版获取的是PS文档的预览图，图片文件很小，放大时模糊，现优化为直接获取文档元数据，相当于RAW格式，文件为未压缩的PNG格式，一般1024*1024图片实际大小3M左右，2048*2048为12M左右，弃用BASE64编码方式传递，使用二进制传送到comfyui端。现支持全尺寸，裁剪模式，以及实时绘画。  
 
 
+
+2025年12月24日，恢复了插件设置中的“DownScale if Bigger” 和“Upscale it Smaller.”选项，你可以在图片太大时使用此选项优化输出的图片大小。建议值：最大不要超过5400。目前能保证在5400以内可以获得无损高清相素，超过5400将使用暴力压缩为JPG格式，图片质量不保。但依然可以传送。
+
 2025年12月23日做了一个紧急修复，因为裁剪时有一个变量有问题，个别PS版本会出现裁剪后的图片坐标偏移，已修复，如果你有此问题，请重新下载PS插件端，替换你原来的插件端就可以了！！
 
 -----------------------
@@ -38,9 +41,13 @@ Fixed support for rgthree versions above 1.0.0. Currently supports up to the lat
 The quality of images retrieved from Photoshop has been optimized. The original community version retrieved preview images of the Photoshop document, resulting in small file sizes and blurriness when zoomed in. The current version directly retrieves the document's metadata, equivalent to RAW format, with uncompressed PNG files. A typical 1024x1024 image is approximately 3MB in size, and a 2048x2048 image is approximately 12MB. Base64 encoding has been abandoned in favor of binary transmission to the ComfyUI client. Full-size, cropped mode, and real-time drawing are now supported.
 
 
+
+I have restored the "DownScale if Bigger" and "Upscale it Smaller" options in the plugin settings. You can use these options to optimize the output image size when the image is too large. The recommended value is not to exceed 5400. Currently, it is guaranteed that images within 5400 pixels can maintain lossless high-definition quality. Exceeding 5400 will result in forced compression to JPG format, and image quality cannot be guaranteed, though the images can still be transmitted.
+
 An emergency fix was made on December 23, 2025, because there was an issue with a variable during cropping. Some PS versions experienced coordinate offsets in cropped images, which has now been fixed. If you are experiencing this problem, please re-download the PS plugin and replace your original plugin version!
 
 Special Notes:
 
 The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
+
 
