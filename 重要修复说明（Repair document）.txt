@@ -41,13 +41,15 @@ Fixed support for rgthree versions above 1.0.0. Currently supports up to the lat
 The quality of images retrieved from Photoshop has been optimized. The original community version retrieved preview images of the Photoshop document, resulting in small file sizes and blurriness when zoomed in. The current version directly retrieves the document's metadata, equivalent to RAW format, with uncompressed PNG files. A typical 1024x1024 image is approximately 3MB in size, and a 2048x2048 image is approximately 12MB. Base64 encoding has been abandoned in favor of binary transmission to the ComfyUI client. Full-size, cropped mode, and real-time drawing are now supported.
 
 
-
+December 24, 2025
 I have restored the "DownScale if Bigger" and "Upscale it Smaller" options in the plugin settings. You can use these options to optimize the output image size when the image is too large. The recommended value is not to exceed 5400. Currently, it is guaranteed that images within 5400 pixels can maintain lossless high-definition quality. Exceeding 5400 will result in forced compression to JPG format, and image quality cannot be guaranteed, though the images can still be transmitted.
 
+December 23, 2025
 An emergency fix was made on December 23, 2025, because there was an issue with a variable during cropping. Some PS versions experienced coordinate offsets in cropped images, which has now been fixed. If you are experiencing this problem, please re-download the PS plugin and replace your original plugin version!
 
 Special Notes:
 
 The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
+
 
 
