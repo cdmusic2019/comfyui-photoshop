@@ -84,6 +84,7 @@ class PhotoshopToComfyUI:
         try:
             with open(self.configJson, "r", encoding="utf-8") as file:
                 self.ConfigData = json.load(file)
+                self.imageCount = self.ConfigData.get("imageCount", 1)
         except:
             time.sleep(0.5)
             if retry_count < 4:
@@ -150,10 +151,10 @@ class ComfyUIToPhotoshop(SaveImage):
         self.output_dir = folder_paths.get_temp_directory()
         self.type = "temp"
         self.prefix_append = "_temp_"
-        self.compress_level = 4
+        self.compress_level = 0
 
-    @staticmethod
-    def INPUT_TYPES():
+    @classmethod
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "output": ("IMAGE",),
@@ -161,31 +162,72 @@ class ComfyUIToPhotoshop(SaveImage):
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
+    RETURN_TYPES = ()
+    OUTPUT_NODE = True
     FUNCTION = "execute"
     CATEGORY = "Photoshop"
 
-    async def connect_to_backend(self, filename):
-        try:
-            url = f"http://127.0.0.1:8188/ps/renderdone?filename={filename}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    return await response.text()
-        except Exception as e:
-            print(f"_PS_ error on send2Ps: {e}")
+    def tensor_to_bytes(self, tensor):
+        """Convert image tensor to PNG binary data"""
+        img_np = tensor.cpu().numpy()
+        img_np = (img_np * 255).astype(np.uint8)
+        pil_img = Image.fromarray(img_np)
+        
+        buffer = BytesIO()
+        pil_img.save(buffer, format='PNG')
+        buffer.seek(0)
+        return buffer.getvalue()
 
-    async def execute(
-        self,
-        output: torch.Tensor,
-        filename_prefix="PS_OUTPUTS",
-        prompt=None,
-        extra_pnginfo=None,
-    ):
-        # x = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
-        # asyncio.run(self.connect_to_backend(x["ui"]["images"][0]["filename"]))
-        # return x
-        x = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
-        await self.connect_to_backend(x["ui"]["images"][0]["filename"])
-        return x
+    async def send_to_photoshop_binary(self, images_bytes_list):
+        """Sending images to the backend via HTTP binary mode"""
+        try:
+            url = "http://127.0.0.1:8188/ps/render_binary"
+            image_count = len(images_bytes_list)
+            
+            async with aiohttp.ClientSession() as session:
+                for index, image_bytes in enumerate(images_bytes_list):
+                    headers = {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Image-Index': str(index),
+                        'X-Image-Count': str(image_count),
+                        'X-Filename': f'render_{index}.png'
+                    }
+                    print(f"# PS: Sending image {index+1}/{image_count} ({len(image_bytes)} bytes)...")
+                    async with session.post(url, data=image_bytes, headers=headers) as response:
+                        result = await response.json()
+                        print(f"# PS: Response: {result}")
+                        if not result.get('success'):
+                            print(f"# PS: Failed to send image {index+1}/{image_count}")
+                            return None
+            
+            print(f"# PS: All {image_count} images sent successfully")
+            return {"success": True, "count": image_count}
+        except Exception as e:
+            print(f"# PS: Error sending binary to Photoshop: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    async def execute(self, output, filename_prefix="PS_Output", prompt=None, extra_pnginfo=None):
+        """Execute asynchronously - and return a preview"""
+        
+        # 1. First, use the parent class method to save the image (for node preview).
+        results = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
+        
+        # 2. Convert to binary data
+        batch_size = min(output.shape[0], 4)  # Maximum 4 images
+        images_bytes_list = []
+        
+        for i in range(batch_size):
+            img_bytes = self.tensor_to_bytes(output[i])
+            images_bytes_list.append(img_bytes)
+            print(f"# PS: Converted image {i+1}/{batch_size} to binary ({len(img_bytes)} bytes)")
+        
+       
+        await self.send_to_photoshop_binary(images_bytes_list)
+        
+       
+        return results
 
 class ClipPass:
     @classmethod
