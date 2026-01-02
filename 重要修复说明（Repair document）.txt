@@ -14,6 +14,8 @@
 
 最新消息：
 
+2026年1月2日，我做了很多优化，比如将图片的传输模式改为二进制，弃用了原来的base64传输方式，从此大图片传输时不会再卡顿和漫长的等待。另外修复了UI的各种BUG.比如种子不更新，提示词不更新，双箭头逻辑错误，以及中文用户不能在提示词框输中文等等，具体请自行体验，这个版本应该是目前最完整的一个修复版，祝您用得开心！
+
 2025年12月28日，我发布了一新的升级版:v1.93(pro),现在可以一次发送4张图片到PS中，更加高效率生产素材和重绘。（因为属于测试版，暂未同步到仓库代码中，请从右边12月28日发布的comfyui-photoshop_v1.93(pro)高清多图版.zip下载。）
 
 2025年12月25日，修复了一个小BUG，因为浮点数计算取整原因，蒙版和图片有时会出现相差一个像素的问题，已修复，保证蒙版和图片尺寸完全一致！
@@ -48,6 +50,10 @@ The quality of images retrieved from Photoshop has been optimized. The original 
 
 Latest News:
 
+
+January 2, 2026
+I have implemented many optimizations, such as changing the image transmission mode to binary and abandoning the original base64 transmission method. As a result, large image transfers will no longer experience lag or prolonged waiting times. Additionally, various UI bugs have been fixed, including issues like seeds not updating, prompts not refreshing, logic errors with double arrows, and Chinese users being unable to input Chinese in the prompt box, among others. For more details, please experience it firsthand. This version should be the most comprehensive fix to date. I hope you enjoy using it!
+
 December 28, 2025
 I released a new upgrade: v1.93(pro). It now allows sending 4 images to Photoshop at once, significantly improving efficiency for material production and repainting. (As this is a beta version, it has not yet been synchronized to the repository code. Please download it from the comfyui-photoshop_v1.93(pro) High-Definition Multi-Image Edition.zip released on December 28th on the right.)
 
@@ -63,6 +69,7 @@ An emergency fix was made on December 23, 2025, because there was an issue with 
 Special Notes:
 
 The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
+
 
 
 
