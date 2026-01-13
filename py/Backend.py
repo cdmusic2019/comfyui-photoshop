@@ -26,7 +26,7 @@ async def check_and_clear_cache():
     global render_cache
     cache_size = get_cache_size()
     if cache_size > RENDER_CACHE_MAX_SIZE:
-        print(f"# PS: Cache size {cache_size / 1024 / 1024:.2f}MB > 20MB, clearing...")
+        # print(f"# PS: Cache size {cache_size / 1024 / 1024:.2f}MB > 20MB, clearing...")
         render_cache.clear()
         return True
     return False
@@ -41,7 +41,7 @@ async def render_binary(request):
         filename = request.headers.get('X-Filename', f'render_{image_index}.png')
         
         data = await request.read()
-        print(f"# PS: Received binary {filename} ({len(data)} bytes) [{image_index+1}/{image_count}]")
+        # print(f"# PS: Received binary {filename} ({len(data)} bytes) [{image_index+1}/{image_count}]")
         
         async with render_cache_lock:
             #Detect the first image
@@ -52,7 +52,7 @@ async def render_binary(request):
             
            
             current_size = get_cache_size()
-            print(f"# PS: Cache size: {current_size / 1024 / 1024:.2f}MB")
+            # print(f"# PS: Cache size: {current_size / 1024 / 1024:.2f}MB")
         
         if image_index == image_count - 1:
             await send_message(photoshop_users, "renders_ready", {
@@ -78,7 +78,7 @@ async def get_render(request):
     try:
         filename = request.match_info['filename']
         
-        print(f"# PS: Get render request: {filename}")
+        # print(f"# PS: Get render request: {filename}")
         
         async with render_cache_lock:
             if filename in render_cache:
@@ -158,7 +158,8 @@ async def upload_canvas_binary(request):
             f.write(data)
         
         file_size = os.path.getsize(filepath)
-        print(f"# PS: Canvas saved: {filepath} ({file_size} bytes)")
+        # print(f"# PS: Canvas saved: {filepath} ({file_size} bytes)")
+        print(f"# PS: Canvas saved")
         
         return web.json_response({
             "success": True,
@@ -374,7 +375,7 @@ async def send_renders(request):
         image_paths = data.get("images", [])
         
         encoded_images = []
-        for path in image_paths[:4]:  # Maximum 4 cards
+        for path in image_paths[:9]:  # Maximum 9 pics
             with open(path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
                 encoded_images.append(encoded_string)
