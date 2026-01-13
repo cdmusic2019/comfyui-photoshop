@@ -14,6 +14,15 @@
 
 最新消息：
 
+2026年1月13日：
+     1）增加了3x3的图片网格，PS端可以正常显示9张图。可以根据硬件配置使用，如果硬件配置较差，可以使用1张的网格，中等配置使用2x2的网格，如果配置较好，可以使用3x3的网格
+     2）对rgthree分组同步进化了优化，增加了更多标准颜色的匹配。让工作流同步更容易。
+        同步逻辑：
+              设置模块：根据颜色"red/brown/green"（兼容老版本"#4e5e4e"）或“⚙️”符号
+              工作流模块：根据颜色"blue/pale_blue/cyan/purple/yellow/black/默认色"(兼容老版本blue"#2b4557")或“📁”来同步的
+        所以，只需保证颜色或图标任意一种即可。由于comfyui升级，颜色值可能会更改，所以尽量在标题中以符号“⚙️”和“📁”开始。
+
+
 2026年1月2日，我做了很多优化，比如将图片的传输模式改为二进制，弃用了原来的base64传输方式，从此大图片传输时不会再卡顿和漫长的等待。另外修复了UI的各种BUG.比如种子不更新，提示词不更新，双箭头逻辑错误，以及中文用户不能在提示词框输中文等等，具体请自行体验，这个版本应该是目前最完整的一个修复版，祝您用得开心！
 
 2025年12月28日，我发布了一新的升级版:v1.93(pro),现在可以一次发送4张图片到PS中，更加高效率生产素材和重绘。（因为属于测试版，暂未同步到仓库代码中，请从右边12月28日发布的comfyui-photoshop_v1.93(pro)高清多图版.zip下载。）
@@ -49,7 +58,13 @@ The quality of images retrieved from Photoshop has been optimized. The original 
 
 
 Latest News:
-
+January 13, 2026
+  1）Added a 3x3 image grid, allowing the PS side to correctly display up to 9 images. This feature can be utilized based on your hardware configuration: use a 1-image grid for lower-end hardware, a 2x2 grid for medium configurations, and a 3x3 grid for better-performing setups.
+  2）Optimized the synchronization for rgthree grouping by adding more standard color matching, making workflow synchronization easier.  
+   Synchronization Logic:
+       Setting Modules: Based on the colors "red/brown/green" (compatible with the old version "#4e5e4e") or the "⚙️" symbol.
+       Workflow Modules: Based on the colors "blue/pale_blue/cyan/purple/yellow/black/default color" (compatible with the old version blue "#2b4557") or the "📁" symbol.
+      Therefore, it is sufficient to match either the color or the icon. Due to potential changes in color values with ComfyUI updates, it is recommended to start titles with the symbols "⚙️" and "📁".
 
 January 2, 2026
 I have implemented many optimizations, such as changing the image transmission mode to binary and abandoning the original base64 transmission method. As a result, large image transfers will no longer experience lag or prolonged waiting times. Additionally, various UI bugs have been fixed, including issues like seeds not updating, prompts not refreshing, logic errors with double arrows, and Chinese users being unable to input Chinese in the prompt box, among others. For more details, please experience it firsthand. This version should be the most comprehensive fix to date. I hope you enjoy using it!
@@ -69,6 +84,7 @@ An emergency fix was made on December 23, 2025, because there was an issue with 
 Special Notes:
 
 The plugin is fully owned by the author NimaNzrii. Project address: https://github.com/NimaNzrii/comfyui-photoshop. According to the license, please do not distribute or sell this plugin without written consent from NimaNzrii. (BUG FIX: cdmusic)
+
 
 
 
