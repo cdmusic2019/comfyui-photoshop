@@ -195,7 +195,7 @@ class ComfyUIToPhotoshop(SaveImage):
                     print(f"# PS: Sending image {index+1}/{image_count} ({len(image_bytes)} bytes)...")
                     async with session.post(url, data=image_bytes, headers=headers) as response:
                         result = await response.json()
-                        print(f"# PS: Response: {result}")
+                        # print(f"# PS: Response: {result}")
                         if not result.get('success'):
                             print(f"# PS: Failed to send image {index+1}/{image_count}")
                             return None
@@ -215,7 +215,7 @@ class ComfyUIToPhotoshop(SaveImage):
         results = self.save_images(output, filename_prefix, prompt, extra_pnginfo)
         
         # 2. Convert to binary data
-        batch_size = min(output.shape[0], 4)  # Maximum 4 images
+        batch_size = min(output.shape[0], 9)  # Maximum 9 images
         images_bytes_list = []
         
         for i in range(batch_size):
