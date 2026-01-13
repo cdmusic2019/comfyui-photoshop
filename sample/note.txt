@@ -1,0 +1,20 @@
+ps中显示：Failed to Get LIST,请参考下面：
+
+分组节点请使用"Fast Groups Muter (rgthree)"，同步原则：设置模块是根据颜色"red/brown/green"（兼容老版本"#4e5e4e"）或“⚙️”符号。工作流模块是根据颜色"blue/pale_blue/cyan/purple/yellow/black/默认色"(兼容老版本blue"#2b4557")或“📁”来同步的，只需保证颜色或图标任意一种即可。由于comfyui升级，颜色值可能会更改，所以尽量在标题中以符号“⚙️”和“📁”开始。
+
+   1.你可以复制本工作流中的“⚙️ Render Setting”和“📁 WorkFlows”节点到你的工作流，然后删除原来的分组。
+   2.你也可以使用本测试工作流来自行搭建（推荐这样用，减少99%的连接问题）。
+   3.如果你不需要使用分组管理工作流，也可以使用comfyui的标签页加载单独的工作流来使用，不会影响插件功能
+  
+ 重要说明：由于comfyui连接机制，如果测试中多次无用连接，服务端可能会中止PS的连接，造成永久性连接不上，解决方法是删除comfyui自定义节点目录下的comfyui-photoshop 文件夹，然后重新复制一个新的考贝就可以解决了。这BUG已修复，应该不会再出现。
+   
+
+
+The PS interface displays: "Failed to Get LIST." Please refer to the following:
+
+Group nodes should use "Fast Groups Muter (rgthree)." Synchronization principle: Setting modules are synchronized based on the colors "red/brown/green" (compatible with the old version "#4e5e4e") or the "⚙️" symbol. Workflow modules are synchronized based on the colors "blue/pale_blue/cyan/purple/yellow/black/default color" (compatible with the old version blue "#2b4557") or the "📁" symbol. It is sufficient to match either the color or the icon. Due to ComfyUI updates, color values may change, so it is recommended to start the title with the symbols "⚙️" and "📁."
+
+You can copy the "⚙️ Render Setting" and "📁 WorkFlows" nodes from this workflow into your own workflow and then delete the original groups.
+You can also use this test workflow to build your own (recommended, as it reduces connection issues by 99%).
+If you do not need to use groups to manage workflows, you can load individual workflows using ComfyUI's tabs, which will not affect the plugin's functionality.
+Important Note: Due to ComfyUI's connection mechanism, if there are multiple useless connections during testing, the server may terminate the PS connection, resulting in a permanent connection failure. The solution is to delete the "comfyui-photoshop" folder in the ComfyUI custom nodes directory and replace it with a fresh copy. This bug has been fixed and should no longer occur.
