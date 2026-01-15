@@ -12,7 +12,7 @@
       对图片（蒙版除外）的传输方式进行了重写，包括从ps获取图片，或comfyui生成的图片发送到PS,弃用了原来的编码方式（base64编码），采用二进制的方式来传送，获取最快的传输速率。
 
     4. 图片清晰度优化。
-       首先是从PS获取图片，原版本获取的是PSR 预览，收于图片较小（1024x1021）只有50-80kb,图片质量较低，放大会模糊，有伪影。现已对获取函数进行了重写，直接获取PS元图片，清晰度和PS一致，文档较大，一般1K的图片 在3M-4M，2K的图片大小10-20M左右，4K的图片 30-40M左右。目前能支持5400x5400分辫率的高清获取，超出会压缩。
+       首先是从PS获取图片，原版本获取的是PS的预览，由于图片较小（1024x1021）只有50-80kb,图片质量较低，放大会模糊，有伪影。现已对获取函数进行了重写，直接获取PS元图片，清晰度和PS一致，文档较大，一般1K的图片 在3M-4M，2K的图片大小10-20M左右，4K的图片 30-40M左右。目前能支持5400x5400分辫率的高清获取，超出会压缩。
       另外，从comfyui传送图片到ps不再压缩，保持comfyui生成图片时的清晰度和文件大小。
 
     5. PS端图片容器重写（最大支持9张图片）
@@ -82,4 +82,5 @@ This version is built upon the original v1.93 with fixes, optimizations, and upg
 
 In summary, this version is currently the most comprehensive one, with many optimizations that may not be visible through the interface. However, users will clearly notice improvements in transfer speed, stability, and image quality.
    
+
 
