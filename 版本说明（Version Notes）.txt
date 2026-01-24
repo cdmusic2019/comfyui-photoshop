@@ -35,12 +35,31 @@
 
 总之，这个版本应该是目前最完整的版本，优化了很多地方，可能透过界面你看不出来，但你明显能感觉得传输速度的提升和更加稳定，以及图片质量的提高。
 
+-------------------------------------------------------------------------------------------
+优化日历：
+
+最新优化：
+
+2026.1.24：
+重构了 Photoshop → ComfyUI 的集成，以实现细粒度、确定性的缓存，同时保持简洁且向后兼容的工作流程。优化了IS_CHANGED函数，以及缓存机制，让处理更快速。
+
+ 主要包括： 
+     1. 将“🔹Photoshop ComfyUI Plugin“进行了细化，分解为：图片蒙版，种子，提示词，滑块值等单独的节点，节点名称为："🔹Photoshop ComfyUI Plugin"，"🔹Photoshop Seed"，"🔹Photoshop Prompts"，"🔹Photoshop Slider"，搭建工作流时可以单独使用它们，让工作流变得更简单高效。
+
+     2. 兼容以前的工作流，增加新节点的同时，暂时保留了初始节点，🔹Photoshop ComfyUI Plugin(aio),如果你使用原版工作流，它仍然可以正常使用，不需做任何修改。
+   感谢Michoko92的对代码的优化，本重构代码均由：Michoko92 提供！
+
+2026.1.24
+Refactored the integration of Photoshop → ComfyUI to achieve fine-grained, deterministic caching while maintaining a streamlined and backward-compatible workflow. Optimized the IS_CHANGED function and caching mechanism for faster processing.
+
+Main updates include:
+
+1.The "🔹Photoshop ComfyUI Plugin" has been refined and broken down into separate nodes for image masks, seeds, prompts, slider values, etc. The node names are: "🔹Photoshop ComfyUI Plugin," "🔹Photoshop Seed," "🔹Photoshop Prompts," "🔹Photoshop Slider." These can be used individually when building workflows, making the workflow simpler and more efficient.
+2.Compatibility with previous workflows is maintained. While new nodes have been added, the original node "🔹Photoshop ComfyUI Plugin (aio)" is temporarily retained. If you are using the original workflow, it will continue to function normally without any modifications.
+Thanks to Michoko92. The refactored code was provided by Michoko92!
 
 
-
-
-
-
+----------------------------------------------------------------------------------------------------
 
 Release Notes - Version Update
 
@@ -82,5 +101,6 @@ This version is built upon the original v1.93 with fixes, optimizations, and upg
 
 In summary, this version is currently the most comprehensive one, with many optimizations that may not be visible through the interface. However, users will clearly notice improvements in transfer speed, stability, and image quality.
    
+
 
 
