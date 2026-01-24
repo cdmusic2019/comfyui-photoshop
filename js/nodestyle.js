@@ -196,7 +196,7 @@ app.registerExtension({
   setup: setup, // Reference the setup function here
   async nodeCreated(node) {
     try {
-      if (node?.comfyClass === "🔹Photoshop ComfyUI Plugin"||node?.comfyClass === "🔹Photoshop ComfyUI Plugin_v1") {
+      if (node?.comfyClass === "🔹Photoshop ComfyUI Plugin"||node?.comfyClass === "🔹PhotoshopCanvasToComfyUI") {
         photoshopNode.push(node);
         addBooleanProperty(node);
         handleMouseEvents(node);
