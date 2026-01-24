@@ -18,7 +18,7 @@ nodepath = os.path.join(
     folder_paths.get_folder_paths("custom_nodes")[0], "comfyui-photoshop"
 )
 
-
+# New Refined Refactoring Node by Michoko92
 def is_changed_file(filepath):
     """Return a deterministic cache key for a file (md5 hexdigest).
 
@@ -497,7 +497,7 @@ class modelPass:
 
 NODE_CLASS_MAPPINGS = {
     "🔹Photoshop ComfyUI Plugin": PhotoshopToComfyUI, 
-    "🔹Photoshop ComfyUI Plugin_v1": PhotoshopToComfyUI_new,
+    "🔹PhotoshopCanvasToComfyUI": PhotoshopToComfyUI_new,
     "🔹Photoshop Prompts": PhotoshopPromptsToComfyUI,
     "🔹Photoshop Slider": PhotoshopSliderToComfyUI,
     "🔹Photoshop Seed": PhotoshopSeedToComfyUI,
@@ -511,7 +511,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PhotoshopSliderToComfyUI": "🔹Photoshop Slider",
     "PhotoshopPromptsToComfyUI": "🔹Photoshop Prompts",
     "🔹Photoshop ComfyUI Plugin": "🔹Photoshop ComfyUI Plugin(aio)",
-    "🔹Photoshop ComfyUI Plugin_v1": "🔹Photoshop ComfyUI Plugin",
+    "🔹PhotoshopCanvasToComfyUI": "🔹Photoshop ComfyUI Plugin",
     "SendToPhotoshop": "🔹Send To Photoshop",
     "ClipPass": "🔹ClipPass",
     "modelPass": "🔹modelPass",
