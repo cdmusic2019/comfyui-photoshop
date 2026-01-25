@@ -140,7 +140,7 @@ class PhotoshopToComfyUI:
             print("Error in IS_CHANGED:", e)
             return 0
 # New Refined Refactoring Node  by Michoko92
-class PhotoshopToComfyUI_new:
+class PhotoshopCanvas:
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {}}
@@ -497,7 +497,7 @@ class modelPass:
 
 NODE_CLASS_MAPPINGS = {
     "🔹Photoshop ComfyUI Plugin": PhotoshopToComfyUI, 
-    "🔹PhotoshopCanvasToComfyUI": PhotoshopToComfyUI_new,
+    "🔹PhotoshopCanvasToComfyUI": PhotoshopCanvas,
     "🔹Photoshop Prompts": PhotoshopPromptsToComfyUI,
     "🔹Photoshop Slider": PhotoshopSliderToComfyUI,
     "🔹Photoshop Seed": PhotoshopSeedToComfyUI,
