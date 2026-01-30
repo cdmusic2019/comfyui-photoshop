@@ -1,5 +1,7 @@
 <div align="center">
-V2.0.0 BETA IS COMING SOON...
+本版本是在原版v1.93基础上进行优化和升级，现已支持高清，多图，和云端使用。
+This version is optimized and upgraded based on the original v1.93. It now supports high-definition, multi-image, and cloud-based usage.
+
 
 # ✨ ComfyUI Photoshop Plugin    [![GitHub Stars](https://img.shields.io/github/stars/NimaNzrii/comfyui-photoshop?style=social)](https://github.com/NimaNzrii/comfyui-photoshop)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://studio.buymeacoffee.com/dashboard)
