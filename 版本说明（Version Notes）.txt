@@ -1,60 +1,86 @@
-This version is optimized and upgraded based on the original v1.93. It now supports high-definition, multi-image, and cloud-based usage.
+本版本是在原版v1.93基础上进行优化和升级，现已支持高清，多图，和云端使用。
 
-一、功能重写：
-1. 蒙版
-对蒙版（mask）的获取代码进行了重写，让它可以支持 PS 最新版本。支持 PS 2024 - PS 2026，输出标准的黑白蒙版。
-2. rgthree节点支持最新版本：
-对工作流分组节点同步代码进行了重写，可以支持最新版本的 rgthree。代码上增加更多的颜色匹配方式，更容易同步工作流；增加傻瓜式同步方法，只要工作流中有一个 (Fast Groups Muter) 节点，就可以同步工作流模块。
-3. 图片传输均使用二进制（快速）
-对图片（蒙版除外）的传输方式进行了重写，包括从 PS 获取图片，或 ComfyUI 生成的图片发送到 PS。弃用了原来的编码方式（base64编码），采用二进制的方式来传送，获取最快的传输速率。
-4. 图片清晰度优化。
-首先是从 PS 获取图片，原版本获取的是 PS 的预览，由于图片较小（1024x1024）只有 50-80KB，图片质量较低，放大会模糊。现代码支持直接获取 PS 元图片，清晰度和 PS 一致，文档较大，一般 1K 的图片在 3M-4M，2K 的图片大小 10-20M 左右，4K 的图片 30-40M 左右。
-对 PS 上传到 ComfyUI 的图片大小逻辑是：本地使用最大上传单张图片大小 85M（5400x5400px），云端最大上传单张图片大小 35M（3500x3500px），超过最大尺寸时会使用压缩后的 JPG。云端如果文档较大，尽量使用裁剪功能，减少上传压力。
-5. PS端图片容器重写（最大支持9张图片）
-原版本只支持 1 张图片（1x1）显示。现在对容器进行了重写，增加了 2x2 和 3x3 的图片网格，支持从 ComfyUI 发送到 PS 的图片数量是 1-9 张，根据图片数量使用不同的网格。（PS端接收图片的逻辑是图片组（image batch），无论用何种方式生成的 batch 都可以输送到 PS 中）
-6. 新增云端支持
-可以支持云端 ComfyUI，但需要云端支持完整安装本插件并支持加载插件的 JS。我测试能用的环境是：仙宫云、AutoDL 算力云。其他云自行测试。（端脑云暂不支持，因为 JS 不能加载，问客服半天不回复，放弃！）
+    一，功能重写：
 
-二、界面或UI修复
-1. 插件面板悬浮层优化，种子、提示词同步，其他更多优化自行体验。
-2. 修复了一个经典的 BUG，就是 ComfyUI 能连上 PS，但 PS 不能发送到 ComfyUI 的 BUG。
-3. 社区中见到的大部分 bug 都已经修复。
+    1. 蒙版
+    对蒙版（mask)的获取代码进行了重写，让它可以支持ps最新版本。支持ps2024-ps2026,输出标准的黑白蒙版
 
-总之，这个版本应该是目前最完整的版本，优化了很多地方。可能透过界面你看不出来，但你明显能感觉到传输速度的提升和更加稳定，以及图片质量的提高。
+    2. rgthree节点支持最新版本：
+    对工作流分组节点同步代码进行了重写，可以支持最新版本的rgthree,代码上增加更多的颜色匹配方式，更容易同步工作流，增加傻瓜式同步方法，只要工作流中有一个(Fast Groups Muter )节点，就可以同步工作流模块
+
+    3. 图片传输均使用二进制（快速）
+    对图片（蒙版除外）的传输方式进行了重写，包括从ps获取图片，或comfyui生成的图片发送到PS,弃用了原来的编码方式（base64编码），采用二进制的方式来传送，获取最快的传输速率。
+
+    4. 图片清晰度优化。
+    首先是从PS获取图片，原版本获取的是PS的预览，由于图片较小（1024x1024）只有50-80kb,图片质量较低，放大会模糊。 现代码支持直接获取PS元图片，清晰度和PS一致，文档较大，一般1K的图片 在3M-4M，2K的图片大小10-20M左右，4K的图片 30-40M左右。
+    对ps上传到comfyui的图片大小逻辑是：本地使用最大上传单张图片大小85M （5400X5400px）,云端最大上传单张图片大小35M（3500x3500）,超过最大尺寸时会使用压缩后的JPG。云端如果文档较大尽量使用裁剪功能，减少上传压力。
+
+    5. PS端图片容器重写（最大支持9张图片）
+    原版本只支持1张图片（1x1）显示。现在对容器进行了重写，增加了2x2 和3x3的图片网格，支持从comfyui发送到PS的图片数量是1-9张，根据图片数量使用不同的网格。（PS端接收图片的逻辑是图片组（image batch）,无论用何种方式生成的batch都可以输送到ps中）
+
+    6. 新增云端支持，
+    可以支持云端comfyui.但需要云端支持完整安装本插件并支持加载插件的JS。我测试能用的环境是：仙宫云，autodl 算力云。其他云自行测试。（端脑云暂不支持，因为JS不能加载，问客服半天不回复，放弃！）
+
+    二，界面或UI修复。
+
+    1.插面板版悬浮层优化，种子，提示词同步，其他更多优化自行体验。
+
+    2.修复了一个经典的BUB，就是comfyui能连上PS，但PS不能发送到comfyui的BUG。
+
+    3.社区中见到的大部份bug都已经修复。
+
+    总之，这个版本应该是目前最完整的版本，优化了很多地方，可能透过界面你看不出来，但你明显能感觉得传输速度的提升和更加稳定，以及图片质量的提高。
 
 优化日历：
 
-最新优化：
-2026.1.30
-添加了云端支持。把 IP 优化为动态 IP，动态端口，支持本地 PS 连接上云端 ComfyUI 使用。（前提条件是需要云端能完整的安装本插件，包括运行插件的 JS 代码）
+    最新优化：
 
-2026.1.24
-重构了 Photoshop → ComfyUI 的集成，以实现细粒度、确定性的缓存，同时保持简洁且向后兼容的工作流程。优化了 IS_CHANGED 函数，以及缓存机制，处理更快速。
-主要包括：
-1. 将“🔹Photoshop ComfyUI Plugin”进行了细化，分解为：图片蒙版、种子、提示词、滑块值等单独的节点，节点名称为："🔹Photoshop ComfyUI Plugin"、"🔹Photoshop Seed"、"🔹Photoshop Prompts"、"🔹Photoshop Slider"。搭建工作流时可以单独使用它们，让工作流变得更简单高效。
-2. 兼容以前的工作流，增加新节点的同时，暂时保留了初始节点 "🔹Photoshop ComfyUI Plugin (aio)"。如果你使用原版工作流，它仍然可以正常使用，不需做任何修改。
-感谢 Michoko92 对代码的优化，本重构代码均由：Michoko92 提供！
+    2026.1.30
+    添加了云端支持。把IP优化为动态IP，动态端口，支持本地PS连接上云端comfyui使用.(前提条件是需要云端能完整的安装本插件，包括运行插件的JS代码)
 
-This version is optimized and upgraded based on the original v1.93. It now supports high-definition, multi-image, and cloud-based usage.
+    2026.1.24：
+    重构了 Photoshop → ComfyUI 的集成，以实现细粒度、确定性的缓存，同时保持简洁且向后兼容的工作流程。优化了IS_CHANGED函数，以及缓存机制，处理更快速。
+    主要包括：
+    1. 将“🔹Photoshop ComfyUI Plugin“进行了细化，分解为：图片蒙版，种子，提示词，滑块值等单独的节点，节点名称为："🔹Photoshop ComfyUI Plugin"，"🔹Photoshop Seed"，"🔹Photoshop Prompts"，"🔹Photoshop Slider"，搭建工作流时可以单独使用它们，让工作流变得更简单高效。
+    2. 兼容以前的工作流，增加新节点的同时，暂时保留了初始节点，🔹Photoshop ComfyUI Plugin(aio),如果你使用原版工作流，它仍然可以正常使用，不需做任何修改。
+    感谢Michoko92的对代码的优化，本重构代码均由：Michoko92 提供！
 
-I. Feature Rewrites
-1. Mask
-The code for obtaining masks has been rewritten to support the latest version of Photoshop. It is compatible with PS 2024–PS 2026 and outputs standard black-and-white masks.
-2. rgthree Node Support for the Latest Version
-The workflow group node synchronization code has been rewritten to support the latest version of rgthree. More color matching methods have been added to the code, making workflow synchronization easier. A foolproof synchronization method has been introduced: as long as there is one "Fast Groups Muter" node in the workflow, workflow modules can be synchronized.
-3. Image Transmission Using Binary (Fast)
-The transmission method for images (except masks) has been rewritten, including retrieving images from PS or sending images generated by ComfyUI to PS. The previous encoding method (base64 encoding) has been abandoned in favor of binary transmission to achieve the fastest transfer rates.
-4. Image Clarity Optimization
-First, when retrieving images from PS, the original version only obtained PS previews, which were small (1024x1024, only 50–80 KB) and of lower quality, causing blurring when enlarged. The current code supports directly retrieving the original PS images, ensuring clarity consistent with PS. File sizes are larger: typically 3–4 MB for 1K images, 10–20 MB for 2K images, and 30–40 MB for 4K images.
-The logic for uploading images from PS to ComfyUI is as follows: local usage supports a maximum single image upload size of 85 MB (5400×5400 px), while cloud usage supports a maximum single image upload size of 35 MB (3500×3500 px). If the size exceeds the maximum limit, compressed JPGs will be used. For cloud usage, if the document is large, it is recommended to use cropping to reduce upload pressure.
-5. PS-Side Image Container Rewrite (Supports Up to 9 Images)
-The original version only supported displaying one image (1x1). The container has now been rewritten to include 2x2 and 3x3 image grids, supporting 1–9 images sent from ComfyUI to PS. Different grids are used based on the number of images. (The logic for receiving images on the PS side is image batches; batches generated in any way can be delivered to PS.)
-6. Added Cloud Support
-Cloud-based ComfyUI is now supported. However, the cloud environment must fully install this plugin and support loading the plugin’s JS. Tested compatible environments include: Xiāngōng Cloud, AutoDL Computing Cloud. Other clouds can be tested individually. (Duànnǎo Cloud is currently unsupported because JS cannot be loaded; after no response from customer service for a long time, support was abandoned.)
+    2026.1.24
+    Refactored the integration of Photoshop → ComfyUI to achieve fine-grained, deterministic caching while maintaining a streamlined and backward-compatible workflow. Optimized the IS_CHANGED function and caching mechanism for faster processing.
+    Main updates include:
+    1.The "🔹Photoshop ComfyUI Plugin" has been refined and broken down into separate nodes for image masks, seeds, prompts, slider values, etc. The node names are: "🔹Photoshop ComfyUI Plugin," "🔹Photoshop Seed," "🔹Photoshop Prompts," "🔹Photoshop Slider." These can be used individually when building workflows, making the workflow simpler and more efficient.
+    2.Compatibility with previous workflows is maintained. While new nodes have been added, the original node "🔹Photoshop ComfyUI Plugin (aio)" is temporarily retained. If you are using the original workflow, it will continue to function normally without any modifications.
+    Thanks to Michoko92. The refactored code was provided by Michoko92!
 
-II. Interface or UI Fixes
-1. Optimized the floating layer of the plugin panel, seed and prompt synchronization, and other improvements for users to explore.
-2. Fixed a classic bug where ComfyUI could connect to PS, but PS could not send data to ComfyUI.
-3. Most bugs reported in the community have been fixed.
+    This version is optimized and upgraded based on the original v1.93. It now supports high-definition, multi-image, and cloud-based usage.
 
-In summary, this version is currently the most complete one, with many optimizations. While some improvements may not be visible through the interface, users will noticeably experience faster transmission speeds, increased stability, and improved image quality.
+    I. Feature Rewrites:
+
+    1. Mask
+    The code for obtaining masks has been rewritten to support the latest version of Photoshop. It is compatible with PS 2024–PS 2026 and outputs standard black-and-white masks.
+
+    2. rgthree Node Support for the Latest Version:
+    The workflow group node synchronization code has been rewritten to support the latest version of rgthree. More color matching methods have been added to the code, making workflow synchronization easier. A foolproof synchronization method has been introduced: as long as there is one "Fast Groups Muter" node in the workflow, workflow modules can be synchronized.
+
+    3. Image Transmission Using Binary (Fast):
+    The transmission method for images (except masks) has been rewritten, including retrieving images from PS or sending images generated by ComfyUI to PS. The previous encoding method (base64 encoding) has been abandoned in favor of binary transmission to achieve the fastest transfer rates.
+
+    4. Image Clarity Optimization:
+    First, when retrieving images from PS, the original version only obtained PS previews, which were small (1024x1024, only 50–80 KB) and of lower quality, causing blurring when enlarged. The current code supports directly retrieving the original PS images, ensuring clarity consistent with PS. File sizes are larger: typically 3–4 MB for 1K images, 10–20 MB for 2K images, and 30–40 MB for 4K images.
+    The logic for uploading images from PS to ComfyUI is as follows: local usage supports a maximum single image upload size of 85 MB (5400×5400 px), while cloud usage supports a maximum single image upload size of 35 MB (3500×3500 px). If the size exceeds the maximum limit, compressed JPGs will be used. For cloud usage, if the document is large, it is recommended to use cropping to reduce upload pressure.
+
+    5. PS-Side Image Container Rewrite (Supports Up to 9 Images):
+    The original version only supported displaying one image (1x1). The container has now been rewritten to include 2x2 and 3x3 image grids, supporting 1–9 images sent from ComfyUI to PS. Different grids are used based on the number of images. (The logic for receiving images on the PS side is image batches; batches generated in any way can be delivered to PS.)
+
+    6. Added Cloud Support:
+    Cloud-based ComfyUI is now supported. However, the cloud environment must fully install this plugin and support loading the plugin’s JS. Tested compatible environments include: Xiāngōng Cloud, AutoDL Computing Cloud. Other clouds can be tested individually. (Duànnǎo Cloud is currently unsupported because JS cannot be loaded; after no response from customer service for a long time, support was abandoned.)
+
+    II. Interface or UI Fixes:
+
+    1. Optimized the floating layer of the plugin panel, seed and prompt synchronization, and other improvements for users to explore.
+
+    2. Fixed a classic bug where ComfyUI could connect to PS, but PS could not send data to ComfyUI.
+
+    3. Most bugs reported in the community have been fixed.
+
+    In summary, this version is currently the most complete one, with many optimizations. While some improvements may not be visible through the interface, users will noticeably experience faster transmission speeds, increased stability, and improved image quality.
