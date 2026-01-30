@@ -1,1 +1,0 @@
-Fixed the issue of unclean gray mask output in Photoshop 2025-2026.
