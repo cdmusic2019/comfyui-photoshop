@@ -1,6 +1,47 @@
 let socket = null;
 let listeners = {};
 
+
+
+//Add dynamic port adaptation to the cloud
+function connect() {
+  try {
+    // Dynamically determine the protocol: if it's HTTPS, use WSS; otherwise, use WS.
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const wsUrl = protocol + window.location.host + "/ps/ws?platform=cm&clientId=" + generateClientId();
+
+    socket = new WebSocket(wsUrl);
+
+    socket.addEventListener("open", () => {
+      console.log("🕼 Connected to the server.");
+    });
+
+    socket.addEventListener("message", (event) => {
+      try {
+        let message = JSON.parse(event.data);
+        handleMessage(message);
+      } catch (error) {
+        console.error("🕼 Error parsing message:", error, event.data);
+      }
+    });
+
+    socket.addEventListener("close", (event) => {
+      console.warn("🕼 Connection closed. Reconnecting...", event);
+      setTimeout(connect, 5000);
+    });
+    
+    socket.addEventListener("error", (error) => {
+      console.error("🕼 WebSocket error:", error);
+      socket.close(); // Close the socket and trigger the reconnect logic
+    });
+  } catch (error) {
+    console.error("🕼 Error establishing WebSocket connection:", error);
+    setTimeout(connect, 5000);
+  }
+}
+
+//原来connect
+/*
 function connect() {
   try {
     socket = new WebSocket("ws://" + window.location.hostname + ":8188/ps/ws?platform=cm&clientId=" + generateClientId());
@@ -32,6 +73,7 @@ function connect() {
     setTimeout(connect, 5000);
   }
 }
+*/
 
 // Function to generate a unique client ID
 function generateClientId() {
