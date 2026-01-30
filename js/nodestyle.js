@@ -7,8 +7,8 @@ export let photoshopNode = [];
 let setupdone = false;
 let connectdone = false;
 let disabledrow = false;
-const canvasImage = await api.fetchApi(`/ps/inputs/PS_canvas.png`);
-const maskImage = await api.fetchApi(`/ps/inputs/PS_mask.png`);
+// onst canvasImage = await api.fetchApi(`/ps/inputs/PS_canvas.png`);
+// const maskImage = await api.fetchApi(`/ps/inputs/PS_mask.png`);
 
 function setBackgroundImageContain(node, canvasUrl, maskUrl) {
   if (node.mode === 2) {
@@ -18,6 +18,8 @@ function setBackgroundImageContain(node, canvasUrl, maskUrl) {
   const fetchImage = (url) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
+       // Configure cross-domain attributes to prevent cloud-based cross-domain contamination of the canvas.
+      img.crossOrigin = "Anonymous"; 
       img.src = url;
       img.onload = () => resolve(img);
       img.onerror = () => reject(`Failed to load image: ${url}`);
@@ -65,16 +67,29 @@ function setBackgroundImageContain(node, canvasUrl, maskUrl) {
       node.onResize = drawImage;
     })
     .catch((error) => {
-      console.error("🔹 Error:", error);
+
+     // console.error("🔹 Error:", error);
       node.onDrawBackground = null;
       node.setDirtyCanvas(true, true);
     });
 }
 
+// Dynamically build cloud-friendly URLs
 async function previewonthenode(node) {
   const timestamp = new Date().getTime();
-  const canvasImageUrl = `${canvasImage.url}?v=${timestamp}`;
-  const maskImageUrl = `${maskImage.url}?v=${timestamp}`;
+
+  // Get the base address of the current page (https://domain:port)
+  const baseUrl = window.location.origin;
+  
+  
+  // Note: This assumes that the backend provides a static file service or route for /ps/inputs/xxx.
+  // If the backend uses the ComfyUI standard view interface, it should be changed to:
+  // `${baseUrl}/view?filename=PS_canvas.png&subfolder=ps_inputs&type=input&v=${timestamp}`
+  
+ // const canvasImageUrl = `${canvasImage.url}?v=${timestamp}`;
+  //const maskImageUrl = `${maskImage.url}?v=${timestamp}`;
+  const canvasImageUrl = `${baseUrl}/ps/inputs/PS_canvas.png?v=${timestamp}`;
+  const maskImageUrl = `${baseUrl}/ps/inputs/PS_mask.png?v=${timestamp}`;
   setBackgroundImageContain(node, canvasImageUrl, maskImageUrl);
 }
 
@@ -126,12 +141,16 @@ async function addBooleanProperty(node) {
 
   node.properties = createWatchedObject(properties, async (property, newValue) => {
     if (property === "Disable Preview") {
+       // 【修改点3】在这里也调用 previewonthenode 统一逻辑
+      previewonthenode(node);
+      /*
       const timestamp = new Date().getTime();
       const canvasImageUrl = `${canvasImage.url}?v=${timestamp}`;
       const maskImageUrl = `${maskImage.url}?v=${timestamp}`;
       setBackgroundImageContain(node, canvasImageUrl, maskImageUrl);
       console.log("canvasImageUrl: ", canvasImageUrl);
       console.log("maskImageUrl: ", maskImageUrl);
+      */
     }
   });
 }
