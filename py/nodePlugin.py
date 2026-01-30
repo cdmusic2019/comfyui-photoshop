@@ -18,7 +18,7 @@ nodepath = os.path.join(
     folder_paths.get_folder_paths("custom_nodes")[0], "comfyui-photoshop"
 )
 
-# New Refined Refactoring Node by Michoko92
+
 def is_changed_file(filepath):
     """Return a deterministic cache key for a file (md5 hexdigest).
 
@@ -419,7 +419,20 @@ class ComfyUIToPhotoshop(SaveImage):
     async def send_to_photoshop_binary(self, images_bytes_list):
         """Sending images to the backend via HTTP binary mode"""
         try:
-            url = "http://127.0.0.1:8188/ps/render_binary"
+           # url = "http://127.0.0.1:8188/ps/render_binary"
+            # --- Dynamically obtain host and port---
+            from server import PromptServer
+            
+            server = PromptServer.instance
+            host = server.address
+            # If the connection is to 0.0.0.0 (common for cloud or open LAN access), 
+            # internal requests need to be changed to 127.0.0.1.
+            if host == "0.0.0.0":
+                host = "127.0.0.1"
+            port = server.port
+            
+            url = f"http://{host}:{port}/ps/render_binary"
+            # --- --
             image_count = len(images_bytes_list)
             
             async with aiohttp.ClientSession() as session:
@@ -511,7 +524,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "PhotoshopSliderToComfyUI": "🔹Photoshop Slider",
     "PhotoshopPromptsToComfyUI": "🔹Photoshop Prompts",
     "🔹Photoshop ComfyUI Plugin": "🔹Photoshop ComfyUI Plugin",
-    "🔹PhotoshopCanvasToComfyUI": "🔹Photoshop Canvas",
+    "🔹PhotoshopCanvasToComfyUI": "🔹Photoshop canvas",
     "SendToPhotoshop": "🔹Send To Photoshop",
     "ClipPass": "🔹ClipPass",
     "modelPass": "🔹modelPass",
