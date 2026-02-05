@@ -12,19 +12,7 @@
     本人也是插件的使用者，长期使用本插件来做设计。但原仓库代码长期未维护，所以我将它做了优化，修复bug,和一些功能的升级，让插件变得更好用，我本来还打算再添加一些专业的功能，
     但近期我发现有人把这个优化的仓库打包售卖，或改一下前端面版换个名字销售，针对这种不耻行为，我经过考虑后，决定不再新增功能，当前的优化我将保留，大家可以放心使用。
    
-This version is optimized and upgraded based on V1.93 and features the following:
 
-1. Supports the latest version of Photoshop, with optimized mask algorithms, compatible with PS2024 to PS2026.
-2. Obtain high-definition PS documents. When retrieving images from Photoshop, high-definition PS metadata images are supported, ensuring clarity consistent with the original PS documents.
-3. Supports the latest version of rgthree.
-4. Image data is transmitted in binary format, enabling instant local transfers. Large image transfers no longer fail or require excessively long wait times.
-5. Multi-image support, allowing the Photoshop side to receive 1–9 high-definition PNG images.
-6. Node granularity optimization and subdivision for more professional workflow customization (by Michoko92).
-7. Cloud support—the plugin now supports cloud usage, allowing users to enjoy the benefits of large-scale cloud-based GPU rendering.
-
-Special Note:
-    I am also a user of this plugin and have been using it extensively for design work. However, the original repository code had not been maintained for a long time, so I optimized it, fixed bugs, and upgraded some features to make the plugin more usable. I initially planned to add more professional features.
-    but recently, I discovered that some individuals are packaging and selling this optimized repository or rebranding it by modifying the front-end panel for commercial purposes. In response to such despicable behavior, after careful consideration, I have decided not to add any new features. The current optimizations will remain, and everyone is free to use them with confidence
 
 
 # ✨ ComfyUI Photoshop Plugin    [![GitHub Stars](https://img.shields.io/github/stars/NimaNzrii/comfyui-photoshop?style=social)](https://github.com/NimaNzrii/comfyui-photoshop)
