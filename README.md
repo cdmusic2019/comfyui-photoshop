@@ -1,20 +1,5 @@
+
 <div align="center">
-本版本是在V1.93的基础上优化和升级而来，它具有以下特点：
-  1.  支持最新版的PS，优化了蒙版算法，支持PS2024-PS2026
-  2.  获取高清PS文档。从PS中获取图片时支持获取高清PS元图片，清晰度和PS文档一致。
-  3. 对rgthree最新版本支持。
-  4. 图片数据支持二进制传送，本地实现秒传。大图片传送不再失败或等待时间太长。
-  5. 多图支持，支持PS端接收 1-9张高清PNG图片。
-  6. 节点粒度优化，节点细分，方便更专业的工作流定制 （by Michoko92）
-  7. 云端支持，插件已支持云端使用，享受云端超大GPU绘图的乐趣。
-
-特别说明：
-    本人也是插件的使用者，长期使用本插件来做设计。但原仓库代码长期未维护，所以我将它做了优化，修复bug,和一些功能的升级，让插件变得更好用，我本来还打算再添加一些专业的功能，
-    但近期我发现有人把这个优化的仓库打包售卖，或改一下前端面版换个名字销售，针对这种不耻行为，我经过考虑后，决定不再新增功能，当前的优化我将保留，大家可以放心使用。
-   
-
-
-
 # ✨ ComfyUI Photoshop Plugin    [![GitHub Stars](https://img.shields.io/github/stars/NimaNzrii/comfyui-photoshop?style=social)](https://github.com/NimaNzrii/comfyui-photoshop)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://studio.buymeacoffee.com/dashboard)
 [![Discord](https://img.shields.io/badge/Join%20Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/3eHAMWnx7Y)
