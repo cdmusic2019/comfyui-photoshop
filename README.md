@@ -1,5 +1,5 @@
 <details>
-<summary><b>📜本版本是在V1.93的基础上优化和升级而来，它具有以下特点：</b></summary>
+<summary><b>📜本版本是在V1.93的基础上优化和升级而来，它具有以下特点(点击展开/Click to expand)：</b></summary>
    <ul>
  <li>1.  支持最新版的PS，优化了蒙版算法，支持PS2024-PS2026</li>
  <li> 2.  获取高清PS文档。从PS中获取图片时支持获取高清PS元图片，清晰度和PS文档一致。</li>
