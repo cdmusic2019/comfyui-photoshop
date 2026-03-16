@@ -35,6 +35,9 @@
 
     最新优化：
 
+   2026.3.16，我上传了一个优化了V2.049版本，插件由原插件作者NimaNzrii发布的试用体验版本（目前无注册，但可以免费体验软件全部功能），因为作者长时间未更新，有些功能不能正常使用了，我优化了一下，让你可以继续体验V2.0版本，因为源码暂未开源，所以未更新到仓库，至于体验时间到多久，由作者NimaNzrii 决定，如果你有想法或需要长期合作，请联系插件作者NimaNzrii，下载体验地址：https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
+
+
     2026.1.30
     添加了云端支持。把IP优化为动态IP，动态端口，支持本地PS连接上云端comfyui使用.(前提条件是需要云端能完整的安装本插件，包括运行插件的JS代码)
 
@@ -44,6 +47,13 @@
     1. 将“🔹Photoshop ComfyUI Plugin“进行了细化，分解为：图片蒙版，种子，提示词，滑块值等单独的节点，节点名称为："🔹Photoshop ComfyUI Plugin"，"🔹Photoshop Seed"，"🔹Photoshop Prompts"，"🔹Photoshop Slider"，搭建工作流时可以单独使用它们，让工作流变得更简单高效。
     2. 兼容以前的工作流，增加新节点的同时，暂时保留了初始节点，🔹Photoshop ComfyUI Plugin(aio),如果你使用原版工作流，它仍然可以正常使用，不需做任何修改。
     感谢Michoko92的对代码的优化，本重构代码均由：Michoko92 提供！
+
+ 2026.3.16
+  I uploaded an optimized version of V2.049. This plugin is a trial version originally released by the author NimaNzrii (currently no registration is required, and all features of the software can be experienced for free). Since the author has not released updates for a long time, some features were no longer functioning properly. I have made optimizations to allow you to continue experiencing the V2.0 version. As the source code has not been open-sourced yet, it has not been updated to the repository. The duration of this trial experience is determined by the author, NimaNzrii. If you have any ideas or require long-term collaboration, please contact the plugin author, NimaNzrii.
+
+   Download and experience it here:
+https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
+
 
     2026.1.24
     Refactored the integration of Photoshop → ComfyUI to achieve fine-grained, deterministic caching while maintaining a streamlined and backward-compatible workflow. Optimized the IS_CHANGED function and caching mechanism for faster processing.
