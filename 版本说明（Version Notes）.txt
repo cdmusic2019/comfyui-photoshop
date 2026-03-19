@@ -35,7 +35,7 @@
 
     最新优化：
 
-   2026.3.16，我上传了一个优化了V2.049版本，插件由原插件作者NimaNzrii发布的试用体验版本（目前无注册，但可以免费体验软件全部功能），因为作者长时间未更新，有些功能不能正常使用了，我优化了一下，让你可以继续体验V2.0版本，因为源码暂未开源，所以未更新到仓库，至于体验时间到多久，由作者NimaNzrii 决定，如果你有想法或需要长期合作，请联系插件作者NimaNzrii，下载体验地址：https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
+   2026.3.16，我上传了一个优化了V2.049版本，插件源码来源于原插件作者NimaNzrii发布的试用体验版本（目前无注册，但可以免费体验软件全部功能），因为作者长时间未更新，有些功能不能正常使用了，我优化了一下，让你可以继续体验V2.0版本，因为源码暂未开源，所以未更新到仓库，至于体验时间到多久，由作者NimaNzrii 决定，如果你有想法或需要长期合作，请联系插件作者NimaNzrii，下载体验地址：https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
 
 
     2026.1.30
