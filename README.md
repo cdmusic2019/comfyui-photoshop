@@ -8,7 +8,7 @@
  <li>5. 多图支持，支持PS端接收 1-9张高清PNG图片。</li>
  <li>6. 节点粒度优化，节点细分，方便更专业的工作流定制 （by Michoko92）</li>
  <li> 7. 云端支持，插件已支持云端使用，享受云端超大GPU绘图的乐趣。</li>
- <li> 8. 2026.4.4日版本已支持局域网多用户端支持，局域网多台电脑PS插件连接同一台comfyui服务器进行生图，可以使独自的工作流，生图任务采用队制方式。</li>
+ <li> 8. 2026.4.4日版本已支持局域网多用户端支持，局域网多台电脑PS插件连接同一台comfyui服务器进行生图，可以使用独自的工作流，采用队列方式。</li>
 </ul>
 <p><strong>特别说明：</strong><br>
     本人也是插件的使用者，长期使用本插件来做设计。但原仓库代码长期未维护，所以我将它做了优化，修复bug,和一些功能的升级，让插件变得更好用，我本来还打算再添加一些专业的功能，
@@ -24,7 +24,7 @@
 <li>Multi-image support, allowing the Photoshop side to receive 1–9 high-definition PNG images.</li>
 <li>Node granularity optimization and subdivision for more professional workflow customization (by Michoko92).</li>
 <li>Cloud support—the plugin now supports cloud usage, allowing users to enjoy the benefits of large-scale cloud-based GPU rendering.</li>
-<li>The version released on April 4, 2026, now supports multi-client functionality within a local area network. This allows multiple computers with the PS plugin on the same LAN to connect to a single ComfyUI server for image generation. It enables independent workflows, with image generation tasks managed using a queue system.</li>
+<li>The version released on April 4, 2026, now supports multi-client functionality on a local area network (LAN). Multiple computers with the PS plugin can connect to the same ComfyUI server for image generation, each using its own workflow, with tasks managed through a queue system.</li>
 </ul>
 <p><strong>Special Note:</strong><br>
    I am also a user of this plugin and have been using it extensively for design work. However, the original repository code had not been maintained for a long time, so I optimized it, fixed bugs, and upgraded some features to make the plugin more usable. I initially planned to add more professional features. 
