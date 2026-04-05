@@ -1,8 +1,8 @@
 """
 Backend.py — ComfyUI-Photoshop plugin backend.
-
 Bridges ComfyUI and Photoshop via WebSocket, supports multi-client
 queued generation with directed image delivery. BY ：cdmusic2019 /cdmusic
+对列操作有很多异常情况我可能还没有考虑到，如果有问题我有时间再修复。如果队列混乱了，把所有客户端重新加载就行了，服务端会自动清理！
 """
 
 import os
@@ -17,7 +17,7 @@ import aiohttp
 from aiohttp import web, WSMsgType
 import folder_paths
 from server import PromptServer
-
+import functools
 # ──────────────────────────────────────────────
 #  Paths
 # ──────────────────────────────────────────────
@@ -35,6 +35,10 @@ ps_inputs_directory = os.path.join(nodepath, "data", "ps_inputs")
 clients: dict = {}
 photoshop_users: list = []
 comfyui_users: list = []
+GENERATION_TIMEOUT = 300  # 5分钟超时
+generation_start_time: float = 0
+QUICK_FAIL_TIMEOUT = 10  # prompt rapid loss
+generation_started: bool = False  # True = ComfyUI 已发出 execution_start
 
 # Generation queue (FIFO). Each element:
 #   {"client_id": str, "data": dict, "prompt_id": str|None, "task_id": str|None}
@@ -50,8 +54,10 @@ disconnected_clients_ip: dict = {}
 cancelled_task_ips: dict = {}       # {ip: timestamp}
 CANCEL_COOLDOWN: int = 10           # seconds
 
+
 # ComfyUI API base URL
 COMFYUI_API_BASE = "http://127.0.0.1:8188"
+
 
 # ──────────────────────────────────────────────
 #  Render cache (in-memory image store)
@@ -265,13 +271,15 @@ async def _send_or_broadcast(msg_type: str, msg_data, description: str = "data")
 async def _complete_queue_head():
     """Pop the finished queue head, reset batch counters, start next task."""
     global current_generating_client_id, current_batch_sent, current_batch_total
+    global generation_start_time, generation_started  # ★ 新增
     completed = ps_combinedData.pop(0)
     print(f"# PS: Removed {completed['client_id']} from queue. "
           f"Remaining: {len(ps_combinedData)}")
     current_generating_client_id = None
     current_batch_sent = 0
     current_batch_total = 0
-
+    generation_start_time = 0  # ★ 
+    generation_started = False  # ★ 重置
     # ★ 广播队列状态给所有客户端
     await broadcast_queue_status()
 
@@ -581,6 +589,68 @@ async def handle_disconnect(client_id: str, platform: str):
             comfyui_users.remove(client_id)
     clients.pop(client_id, None)
 
+async def _handle_generation_interrupted(msg: dict, interrupt_key: str):
+    """
+    Handle ComfyUI task interruption or error.
+    Removes the currently generating client from ps_combinedData,
+    notifies that client, broadcasts updated queue status,
+    and starts the next queued task if any.
+    """
+    global current_generating_client_id, current_batch_sent, current_batch_total
+    global generation_start_time, generation_started  
+
+    if not current_generating_client_id:
+        print(f"# PS: Interrupted but no active generation client, ignoring")
+        # Still forward the message to all PS clients
+        await send_message(photoshop_users, "", json.dumps(msg))
+        return
+
+    interrupted_client_id = current_generating_client_id
+    print(f"# PS: Generation interrupted for client {interrupted_client_id} "
+          f"(reason: {interrupt_key})")
+
+    # 1. Notify the interrupted client
+    if interrupted_client_id in clients:
+        try:
+            error_detail = msg.get(interrupt_key, "Task was interrupted or failed")
+            await _send_to_client_ws(interrupted_client_id, json.dumps({
+                "type": "generationInterrupted",
+                "reason": interrupt_key,
+                "detail": error_detail if isinstance(error_detail, str) else json.dumps(error_detail),
+                "message": "Your generation task was interrupted.",
+            }))
+        except Exception as e:
+            print(f"# PS: Error notifying interrupted client: {e}")
+
+    # 2. Remove the interrupted client from the queue head
+    if ps_combinedData and ps_combinedData[0]["client_id"] == interrupted_client_id:
+        removed = ps_combinedData.pop(0)
+        print(f"# PS: Removed interrupted client {removed['client_id']} from queue. "
+              f"Remaining: {len(ps_combinedData)}")
+    elif is_client_in_queue(interrupted_client_id):
+        # Edge case: client is in queue but not at the head
+        remove_from_queue(interrupted_client_id)
+    else:
+        print(f"# PS: Interrupted client {interrupted_client_id} was not in queue")
+
+    # 3. Reset generation state
+    current_generating_client_id = None
+    current_batch_sent = 0
+    current_batch_total = 0
+    generation_start_time = 0  # ★ 
+    generation_started = False  # ★ 重置
+
+    # 4. Broadcast updated queue status to all clients
+    await broadcast_queue_status()
+
+    # 5. Start the next task in the queue if any
+    if ps_combinedData:
+        print(f"# PS: Starting next task for {ps_combinedData[0]['client_id']}")
+        await start_next_generation()
+    else:
+        print("# PS: Queue is now empty after interruption")
+
+
 
 # ──────────────────────────────────────────────
 #  Message handling
@@ -588,6 +658,15 @@ async def handle_disconnect(client_id: str, platform: str):
 _PROGRESS_KEYS = frozenset([
     "progress", "generating", "render_status",
     "execution_progress", "execution_start", "execution_complete",
+])
+
+# ComfyUI 任务异常/中断事件的 key
+_INTERRUPT_KEYS = frozenset([
+    "execution_interrupted",
+    "execution_error",
+    "execution_cached",      
+    "prompt_outputs_failed_validation",  
+    "invalid_prompt",                    
 ])
 
 
@@ -603,6 +682,13 @@ async def handle_message(client_id: str, platform: str, data: str):
                 force_pull()
             elif "install_plugin" in msg:
                 install_plugin()
+
+            # ★ Detecting abnormal interruption or termination of ComfyUI tasks by the user.
+            elif msg.keys() & _INTERRUPT_KEYS:
+                interrupted_key = (msg.keys() & _INTERRUPT_KEYS).pop()
+                print(f"# PS: ComfyUI task interrupted/error detected: {interrupted_key}")
+                await _handle_generation_interrupted(msg, interrupted_key)
+
             elif msg.keys() & _PROGRESS_KEYS and current_generating_client_id:
                 # Directed progress → only to the generating client
                 if current_generating_client_id in clients:
@@ -661,6 +747,7 @@ async def handle_ps_generate_request(client_id: str, msg: dict):
 
 async def process_and_forward_to_comfyui(msg: dict):
     global current_generating_client_id, current_batch_total, current_batch_sent
+    global generation_start_time, generation_started
     first = get_queue_first()
     if not first:
         return
@@ -669,7 +756,8 @@ async def process_and_forward_to_comfyui(msg: dict):
     current_generating_client_id = client_id
     current_batch_sent = 0
     current_batch_total = msg.get("batch_size", 1)
-
+    generation_start_time = time.time()  # ★ Start time
+    generation_started = False 
     task_id = str(uuid.uuid4())
     first["task_id"] = task_id
     print(f"# PS: Starting generation for {client_id}, task_id: {task_id}")
@@ -687,9 +775,49 @@ async def process_and_forward_to_comfyui(msg: dict):
 
         await send_to_paired_comfyui(
             client_id, "", json.dumps({"queue": True, "task_id": task_id})
-        )
+       )
+       # ★ Start fast failure detection
+        asyncio.ensure_future(_quick_fail_check(client_id, task_id)) 
     except Exception as e:
         print(f"# PS: Error processing combinedData: {e}")
+
+
+async def _quick_fail_check(client_id: str, task_id: str):
+    """
+    在发送 queue 指令后短暂等待，
+    如果 ComfyUI 快速返回错误（如 prompt 验证失败），
+    则客户端已被 Hook 移除，无需额外处理。
+    如果超时后客户端仍在队列且无进展，可能是卡住了。
+
+    After sending the queue command, wait briefly.
+    If ComfyUI quickly returns an error (such as a prompt indicating verification failure),
+    the client has been removed from the hook and requires no further processing.
+    If the client remains in the queue without progressing after a timeout, it may be stuck.
+    """
+    global generation_started 
+    await asyncio.sleep(QUICK_FAIL_TIMEOUT)
+    # ★ 如果 generation_started 为 True，说明任务已经在执行，
+   
+    if generation_started:
+        # print(f"# PS: [QuickFail] Skipped for {client_id} — "
+             # f"execution_start was received, task is running normally")
+        return
+    
+    first = get_queue_first()
+    if (first
+            and first["client_id"] == client_id
+            and first.get("task_id") == task_id
+            and current_batch_sent == 0
+            and current_generating_client_id == client_id):
+        
+        print(f"# PS: [QuickFail] No progress for {client_id} after "
+              f"{QUICK_FAIL_TIMEOUT}s, likely prompt validation failed")
+        await _handle_generation_interrupted(
+            {"event": "quick_fail_timeout", "data": {}},
+            "quick_fail_timeout"
+        )
+
+
 
 
 async def start_next_generation():
@@ -732,7 +860,7 @@ async def handle_cancel_task(client_id: str):
 
 
 # ──────────────────────────────────────────────
-#  Queue sending and broadcasting
+#  Queue sending and broadcasting/广播当前所有队列，显示在PS插件面版的render旁的 “q:0”处。
 # ──────────────────────────────────────────────
 async def broadcast_queue_status():
     """Queue broadcast"""
@@ -777,3 +905,64 @@ async def broadcast_queue_status():
             print(f"# PS: Error broadcasting queue to {cid}: {e}")
 
     print(f"# PS: Queue broadcast sent. Total: {total}, clients: {len(photoshop_users)}")
+
+
+# ──────────────────────────────────────────────
+#  Hook: Intercept ComfyUI execution events
+# ──────────────────────────────────────────────
+_original_send_sync = PromptServer.instance.send_sync
+
+def _hooked_send_sync(event, data, sid=None):
+    """Intercept ComfyUI native events for interrupt/error/validation detection."""
+    global generation_started 
+    result = _original_send_sync(event, data, sid)
+
+    # List of events that need to be cleared from the queue
+    cleanup_events = {
+        "execution_interrupted",
+        "execution_error",
+    }
+
+    if event in cleanup_events:
+        print(f"# PS: [Hook] ComfyUI event '{event}' detected, "
+              f"cleaning up queue for client: {current_generating_client_id}")
+        try:
+            asyncio.ensure_future(
+                _handle_generation_interrupted(
+                    {"event": event, "data": data}, event
+                )
+            )
+        except Exception as e:
+            print(f"# PS: [Hook] Error handling {event}: {e}")
+
+    # 捕获 prompt 验证失败
+    if event == "execution_start":
+        generation_started = True
+        print(f"# PS: [Hook] execution_start detected, generation_started = True")
+
+    return result
+
+PromptServer.instance.send_sync = _hooked_send_sync
+print("# PS: Hooked into PromptServer.send_sync for interrupt/error detection")
+
+
+# 超时自动移除客户端（Automatically remove client after timeout）
+async def _check_generation_timeout():
+    global current_generating_client_id, generation_start_time
+    while True:
+        await asyncio.sleep(5)  # 每5秒检查一次
+
+        if not current_generating_client_id or not generation_start_time:
+            continue
+
+        elapsed = time.time() - generation_start_time
+        if elapsed > GENERATION_TIMEOUT:
+            print(f"# PS: [Timeout] Generation for {current_generating_client_id} "
+                  f"timed out after {elapsed:.0f}s, force removing from queue")
+            await _handle_generation_interrupted(
+                {"event": "generation_timeout",
+                 "data": {"elapsed": elapsed}},
+                "generation_timeout"
+            )
+
+asyncio.ensure_future(_check_generation_timeout())
