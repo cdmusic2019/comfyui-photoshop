@@ -98,13 +98,19 @@ def install_plugin():
     subprocess.run([sys.executable, os.path.join(nodepath, "Install_Plugin", "installer.py")])
 
 
-async def save_file(data_b64: str, filename: str):
-    with open(os.path.join(ps_inputs_directory, filename), "wb") as f:
+async def save_file(data_b64: str, filename: str, client_id: str = None):
+    prefix = f"{client_id}_" if client_id else ""
+    actual_filename = f"{prefix}{filename}"
+    filepath = os.path.join(ps_inputs_directory, actual_filename)
+    with open(filepath, "wb") as f:
         f.write(base64.b64decode(data_b64))
 
 
-async def save_config(data: dict):
-    with open(os.path.join(ps_inputs_directory, "config.json"), "w", encoding="utf-8") as f:
+async def save_config(data: dict, client_id: str = None):
+    prefix = f"{client_id}_" if client_id else ""
+    actual_filename = f"{prefix}config.json"
+    filepath = os.path.join(ps_inputs_directory, actual_filename)
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
 
 
@@ -471,13 +477,30 @@ async def upload_canvas_binary(request):
     try:
         os.makedirs(ps_inputs_directory, exist_ok=True)
         filename = request.headers.get("X-Filename", "PS_canvas.png")
-        filepath = os.path.join(ps_inputs_directory, filename)
+        
+        # Try to get the clientId from the request
+        client_id = request.headers.get("X-Client-Id") or request.query.get("clientId", "")
+        
+        #  The IP address will automatically match the corresponding PS client ID.
+        if not client_id:
+            client_ip = request.remote or request.headers.get("X-Forwarded-For", "unknown")
+            
+            matching_clients = [cid for cid in photoshop_users if clients.get(cid, {}).get("ip") == client_ip]           
+            if matching_clients:                
+                client_id = matching_clients[-1]
+                print(f"# PS: Auto-matched HTTP upload to client {client_id} via IP {client_ip}")
+
+        # Concatenate filenames with client prefix
+        prefix = f"{client_id}_" if client_id else ""
+        actual_filename = f"{prefix}{filename}"
+        filepath = os.path.join(ps_inputs_directory, actual_filename)
+        
         data = await request.read()
-        print(f"# PS: Received binary data, size: {len(data)} bytes")
+        print(f"# PS: Received binary data for {actual_filename}, size: {len(data)} bytes")
         with open(filepath, "wb") as f:
             f.write(data)
-        print("# PS: Canvas saved")
-        return web.json_response({"success": True, "filename": filename, "size": len(data)})
+            
+        return web.json_response({"success": True, "filename": actual_filename, "size": len(data)})
     except Exception as e:
         print(f"# PS: Upload error: {e}")
         import traceback; traceback.print_exc()
@@ -503,6 +526,33 @@ async def get_input_file(request):
         return web.Response(status=403)
     return web.FileResponse(file)
 
+@PromptServer.instance.routes.get("/ps/paired_client_id")
+async def get_paired_client_id(request):
+    cm_client_id = request.query.get("clientId")
+    
+    # 1. Try using the websocket clientId to find a PS client with the same IP address.
+    if cm_client_id and cm_client_id in clients:
+        cm_ip = clients[cm_client_id].get("ip")
+        for ps_id in photoshop_users:
+            if clients.get(ps_id, {}).get("ip") == cm_ip:
+                return web.json_response({"ps_client_id": ps_id})
+                
+    # 2. Try matching the IP address of the HTTP request.
+    client_ip = request.remote or request.headers.get("X-Forwarded-For", "unknown")
+    for ps_id in photoshop_users:
+        if clients.get(ps_id, {}).get("ip") == client_ip:
+            return web.json_response({"ps_client_id": ps_id})
+            
+    # 3. Downgrade, revert to single-user mode.
+    active_client_file = os.path.join(ps_inputs_directory, "active_client.txt")
+    if os.path.exists(active_client_file):
+        try:
+            with open(active_client_file, "r") as f:
+                return web.json_response({"ps_client_id": f.read().strip()})
+        except:
+            pass
+            
+    return web.json_response({"ps_client_id": ""})
 
 # ──────────────────────────────────────────────
 #  WebSocket handler
@@ -583,6 +633,7 @@ async def handle_disconnect(client_id: str, platform: str):
 
         # ★ Disconnected broadcast queue status
         await broadcast_queue_status()
+        cleanup_client_files(client_id)
 
     elif platform == "cm":
         if client_id in comfyui_users:
@@ -763,15 +814,20 @@ async def process_and_forward_to_comfyui(msg: dict):
     print(f"# PS: Starting generation for {client_id}, task_id: {task_id}")
 
     try:
+        # ★ 记录当前正在生成的客户端ID供Node读取
+        active_client_file = os.path.join(ps_inputs_directory, "active_client.txt")
+        with open(active_client_file, "w") as f:
+            f.write(client_id)
+
         if msg.get("canvasBase64"):
-            await save_file(msg["canvasBase64"], "PS_canvas.png")
+            await save_file(msg["canvasBase64"], "PS_canvas.png", client_id)
         if msg.get("maskBase64"):
-            await save_file(msg["maskBase64"], "PS_mask.png")
+            await save_file(msg["maskBase64"], "PS_mask.png", client_id)
         if msg.get("configdata"):
             cfg = msg["configdata"]
             if isinstance(cfg, str):
                 cfg = json.loads(cfg)
-            await save_config(cfg)
+            await save_config(cfg, client_id)
 
         await send_to_paired_comfyui(
             client_id, "", json.dumps({"queue": True, "task_id": task_id})
@@ -868,42 +924,39 @@ async def broadcast_queue_status():
     for cid in photoshop_users:
         if cid not in clients:
             continue
-        # Find the client's position in the queue.
         position = -1
         for idx, item in enumerate(ps_combinedData):
             if item["client_id"] == cid:
                 position = idx
                 break
-
         if position >= 0:
-            # The client is in the queue: displaying the number of requests ahead.
             wait_count = position
+            is_generating = (position == 0 and current_generating_client_id == cid)
             msg = {
                 "queueBroadcast": {
                     "total": total,
                     "inQueue": True,
                     "waitCount": wait_count,
                     "position": position + 1,
+                    "isGenerating": is_generating,
                 }
             }
         else:
-            # Client not in queue: Display total queue length
             msg = {
                 "queueBroadcast": {
                     "total": total,
                     "inQueue": False,
                     "waitCount": total,
                     "position": 0,
+                    "isGenerating": False,
                 }
             }
-
         try:
             ws = clients[cid]["ws"]
             if not ws.closed:
                 await ws.send_str(json.dumps(msg))
         except Exception as e:
             print(f"# PS: Error broadcasting queue to {cid}: {e}")
-
     print(f"# PS: Queue broadcast sent. Total: {total}, clients: {len(photoshop_users)}")
 
 
@@ -966,3 +1019,23 @@ async def _check_generation_timeout():
             )
 
 asyncio.ensure_future(_check_generation_timeout())
+
+
+# 文件清理函数,用来清理多客户端上传的画布，蒙版和配置文件（File cleanup）
+
+def cleanup_client_files(client_id: str):
+    
+    files_to_delete = [
+        f"{client_id}_PS_canvas.png",
+        f"{client_id}_PS_mask.png",
+        f"{client_id}_config.json"
+    ]
+    for filename in files_to_delete:
+        filepath = os.path.join(ps_inputs_directory, filename)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                # print(f"# PS: Deleted client file {filename}")
+            except Exception as e:
+                print(f"# PS: Failed to delete {filename}: {e}")
+                
