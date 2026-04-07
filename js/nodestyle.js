@@ -77,21 +77,32 @@ function setBackgroundImageContain(node, canvasUrl, maskUrl) {
 // Dynamically build cloud-friendly URLs
 async function previewonthenode(node) {
   const timestamp = new Date().getTime();
-
-  // Get the base address of the current page (https://domain:port)
   const baseUrl = window.location.origin;
   
+  let clientIdPrefix = "";
+  try {
+    // Call the new backend API, passing in the clientId of the current ComfyUI browser.
+    // The backend will return the corresponding bound Photoshop client ID based on this ID or the request IP.
+    const myClientId = api.clientId || "";
+    const clientRes = await fetch(`${baseUrl}/ps/paired_client_id?clientId=${myClientId}`);
+    
+    if (clientRes.ok) {
+      const data = await clientRes.json();
+      if (data.ps_client_id && data.ps_client_id.trim() !== "") {
+        clientIdPrefix = data.ps_client_id.trim() + "_";
+      }
+    }
+  } catch (error) {
+    console.warn("🔹 Could not fetch paired_client_id, falling back to default.", error);
+  }
+
+  // Dynamically concatenate image paths with the correct prefixes.
+  const canvasImageUrl = `${baseUrl}/ps/inputs/${clientIdPrefix}PS_canvas.png?v=${timestamp}`;
+  const maskImageUrl = `${baseUrl}/ps/inputs/${clientIdPrefix}PS_mask.png?v=${timestamp}`;
   
-  // Note: This assumes that the backend provides a static file service or route for /ps/inputs/xxx.
-  // If the backend uses the ComfyUI standard view interface, it should be changed to:
-  // `${baseUrl}/view?filename=PS_canvas.png&subfolder=ps_inputs&type=input&v=${timestamp}`
-  
- // const canvasImageUrl = `${canvasImage.url}?v=${timestamp}`;
-  //const maskImageUrl = `${maskImage.url}?v=${timestamp}`;
-  const canvasImageUrl = `${baseUrl}/ps/inputs/PS_canvas.png?v=${timestamp}`;
-  const maskImageUrl = `${baseUrl}/ps/inputs/PS_mask.png?v=${timestamp}`;
   setBackgroundImageContain(node, canvasImageUrl, maskImageUrl);
 }
+
 
 function drawUpdateTextAndRoundedStroke(ctx, node) {
   ctx.fillStyle = "blue";
