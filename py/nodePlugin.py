@@ -19,6 +19,28 @@ nodepath = os.path.join(
 )
 
 
+def get_client_specific_file(base_filename):
+    
+    inputs_dir = os.path.join(nodepath, "data", "ps_inputs")
+    active_client_file = os.path.join(inputs_dir, "active_client.txt")
+    
+    client_id = None
+    if os.path.exists(active_client_file):
+        try:
+            with open(active_client_file, "r") as f:
+                client_id = f.read().strip()
+        except:
+            pass
+
+    if client_id:
+        client_filepath = os.path.join(inputs_dir, f"{client_id}_{base_filename}")
+        if os.path.exists(client_filepath):
+            return client_filepath
+            
+    # 回退到默认文件
+    return os.path.join(inputs_dir, base_filename)
+
+
 def is_changed_file(filepath):
     """Return a deterministic cache key for a file (md5 hexdigest).
 
@@ -61,11 +83,9 @@ class PhotoshopToComfyUI:
 
     def LoadDir(self, retry_count=0):
         try:
-            self.canvasDir = os.path.join(
-                nodepath, "data", "ps_inputs", "PS_canvas.png"
-            )
-            self.maskImgDir = os.path.join(nodepath, "data", "ps_inputs", "PS_mask.png")
-            self.configJson = os.path.join(nodepath, "data", "ps_inputs", "config.json")
+            self.canvasDir = get_client_specific_file("PS_canvas.png")
+            self.maskImgDir = get_client_specific_file("PS_mask.png")
+            self.configJson = get_client_specific_file("config.json")
         except:
             time.sleep(1)
             if retry_count < 10:
@@ -127,18 +147,18 @@ class PhotoshopToComfyUI:
     @classmethod
     def IS_CHANGED(cls):
         try:
-            configJson = os.path.join(nodepath, "data", "ps_inputs", "config.json")
-            canvasDir = os.path.join(nodepath, "data", "ps_inputs", "PS_canvas.png")
-            maskImgDir = os.path.join(nodepath, "data", "ps_inputs", "PS_mask.png")
-
+            configJson = get_client_specific_file("config.json")
+            canvasDir = get_client_specific_file("PS_canvas.png")
+            maskImgDir = get_client_specific_file("PS_mask.png")
             config_changed = is_changed_file(configJson)
             canvas_changed = is_changed_file(canvasDir)
             mask_changed = is_changed_file(maskImgDir)
-
-            return config_changed or canvas_changed or mask_changed
+            return f"{config_changed}|{canvas_changed}|{mask_changed}"
         except Exception as e:
             print("Error in IS_CHANGED:", e)
-            return 0
+            # return 0
+            return float("NaN")
+
 # New Refined Refactoring Node  by Michoko92
 class PhotoshopCanvas:
     @classmethod
@@ -275,13 +295,13 @@ class PhotoshopPromptsToComfyUI:
         return pos, neg, h
 
     def PS_Prompts(self):
-        configJson = os.path.join(nodepath, "data", "ps_inputs", "config.json")
+        configJson = get_client_specific_file("config.json")
         pos, neg, _ = self._read_prompts_and_hash(configJson)
         return (pos, neg)
 
     @classmethod
     def IS_CHANGED(cls):
-        configJson = os.path.join(nodepath, "data", "ps_inputs", "config.json")
+        configJson = get_client_specific_file("config.json")
         try:
             _, _, h = cls._read_prompts_and_hash(configJson)
             # Return a deterministic key that changes only when prompts change
