@@ -18,6 +18,7 @@ from aiohttp import web, WSMsgType
 import folder_paths
 from server import PromptServer
 import functools
+import glob
 # ──────────────────────────────────────────────
 #  Paths
 # ──────────────────────────────────────────────
@@ -960,6 +961,59 @@ async def broadcast_queue_status():
     print(f"# PS: Queue broadcast sent. Total: {total}, clients: {len(photoshop_users)}")
 
 
+
+
+# 文件清理函数,用来清理多客户端上传的画布，蒙版和配置文件（File cleanup）
+
+def cleanup_client_files(client_id: str):
+    
+    files_to_delete = [
+        f"{client_id}_PS_canvas.png",
+        f"{client_id}_PS_mask.png",
+        f"{client_id}_config.json"
+    ]
+    for filename in files_to_delete:
+        filepath = os.path.join(ps_inputs_directory, filename)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                # print(f"# PS: Deleted client file {filename}")
+            except Exception as e:
+                print(f"# PS: Failed to delete {filename}: {e}")
+
+def cleanup_stale_client_files():
+    """
+    Clean up files left over from system crashes
+    """
+    if not os.path.exists(ps_inputs_directory):
+        return
+
+    
+    active_client_ids = set(clients.keys())
+
+    search_pattern = os.path.join(ps_inputs_directory, "client-*")
+    cleaned_count = 0
+
+    for file_path in glob.glob(search_pattern):
+        filename = os.path.basename(file_path)       
+        parts = filename.split('_', 1)
+        if len(parts) >= 2:
+            client_id = parts[0]
+            if client_id not in active_client_ids:
+                try:
+                    os.remove(file_path)
+                    cleaned_count += 1
+                    print(f"# PS: Cleaned stale file: {filename}")
+                except Exception as e:
+                    print(f"# PS: Failed to delete {filename}: {e}")
+
+    if cleaned_count > 0:
+        print(f"# PS: Startup cleanup completed. "
+              f"Removed {cleaned_count} stale client file(s).")
+    else:
+        print("# PS: Startup cleanup: No stale client files found.")
+
+
 # ──────────────────────────────────────────────
 #  Hook: Intercept ComfyUI execution events
 # ──────────────────────────────────────────────
@@ -998,6 +1052,9 @@ def _hooked_send_sync(event, data, sid=None):
 PromptServer.instance.send_sync = _hooked_send_sync
 print("# PS: Hooked into PromptServer.send_sync for interrupt/error detection")
 
+#Clean up client files left behind when ComfyUI crashes.
+cleanup_stale_client_files() 
+
 
 # 超时自动移除客户端（Automatically remove client after timeout）
 async def _check_generation_timeout():
@@ -1021,21 +1078,4 @@ async def _check_generation_timeout():
 asyncio.ensure_future(_check_generation_timeout())
 
 
-# 文件清理函数,用来清理多客户端上传的画布，蒙版和配置文件（File cleanup）
 
-def cleanup_client_files(client_id: str):
-    
-    files_to_delete = [
-        f"{client_id}_PS_canvas.png",
-        f"{client_id}_PS_mask.png",
-        f"{client_id}_config.json"
-    ]
-    for filename in files_to_delete:
-        filepath = os.path.join(ps_inputs_directory, filename)
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-                # print(f"# PS: Deleted client file {filename}")
-            except Exception as e:
-                print(f"# PS: Failed to delete {filename}: {e}")
-                
