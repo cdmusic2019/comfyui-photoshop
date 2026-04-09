@@ -19,6 +19,8 @@ import folder_paths
 from server import PromptServer
 import functools
 import glob
+import hashlib
+
 # ──────────────────────────────────────────────
 #  Paths
 # ──────────────────────────────────────────────
@@ -75,6 +77,61 @@ def _cache_size() -> int:
 async def _check_and_clear_cache():
     if _cache_size() > RENDER_CACHE_MAX_SIZE:
         render_cache.clear()
+
+
+
+# ──────────────────────────────────────────────
+#  Task fingerprint cache (detect duplicate seed/prompt)
+# ──────────────────────────────────────────────
+last_task_fingerprint: dict = {}  # {client_id: fingerprint_hash}
+
+def compute_task_fingerprint_from_config(client_id: str) -> str:
+    """
+    Seed and clue words, calculate fingerprint。
+    
+    """
+    config_file = os.path.join(ps_inputs_directory, f"{client_id}_config.json")
+    
+    try:
+        with open(config_file, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+    except Exception as e:
+        print(f"# PS: [Fingerprint] Failed to read config for {client_id}: {e}")
+        return None
+    
+    seed = cfg.get("seed")
+    prompt = cfg.get("positive", "") or ""
+    negative_prompt = cfg.get("negative", "") or ""
+    
+    key_fields = {
+        "seed": seed,
+        "prompt": prompt,
+        "negative_prompt": negative_prompt,
+    }
+    raw = json.dumps(key_fields, sort_keys=True)
+    fingerprint = hashlib.md5(raw.encode()).hexdigest()
+    # print(f"# PS: [Fingerprint] client={client_id}, seed={seed}, "
+         # f"prompt={prompt[:30] if prompt else '(empty)'}..., hash={fingerprint}")
+    return fingerprint
+
+def is_duplicate_task_from_config(client_id: str) -> bool:
+    """Check if the two fingerprints are the same"""
+    current_fp = compute_task_fingerprint_from_config(client_id)
+    if current_fp is None:
+        return False
+    last_fp = last_task_fingerprint.get(client_id)
+    is_dup = last_fp is not None and last_fp == current_fp
+    # print(f"# PS: [Duplicate Check] client={client_id}, current_fp={current_fp}, "
+        #  f"last_fp={last_fp}, is_duplicate={is_dup}")
+    return is_dup
+
+def record_task_fingerprint_from_config(client_id: str):
+    """Record the fingerprint of the current task"""
+    fingerprint = compute_task_fingerprint_from_config(client_id)
+    if fingerprint:
+        last_task_fingerprint[client_id] = fingerprint
+        # print(f"# PS: [Record Fingerprint] client={client_id}, hash={fingerprint}")
+
 
 
 # ──────────────────────────────────────────────
@@ -725,7 +782,6 @@ _INTERRUPT_KEYS = frozenset([
 async def handle_message(client_id: str, platform: str, data: str):
     global current_generating_client_id, current_batch_total, current_batch_sent
     msg = json.loads(data)
-
     if platform == "cm":
         try:
             if "pullupdate" in msg:
@@ -734,13 +790,16 @@ async def handle_message(client_id: str, platform: str, data: str):
                 force_pull()
             elif "install_plugin" in msg:
                 install_plugin()
-
-            # ★ Detecting abnormal interruption or termination of ComfyUI tasks by the user.
-            elif msg.keys() & _INTERRUPT_KEYS:
-                interrupted_key = (msg.keys() & _INTERRUPT_KEYS).pop()
+            # ★ 特殊处理 execution_cached
+            elif "execution_cached" in msg:
+                print(f"# PS: ComfyUI execution_cached detected, "
+                      f"clearing queue for {current_generating_client_id}")
+                await _handle_generation_interrupted(msg, "execution_cached")
+            # ★ 其他中断事件
+            elif msg.keys() & (_INTERRUPT_KEYS - {"execution_cached"}):
+                interrupted_key = (msg.keys() & (_INTERRUPT_KEYS - {"execution_cached"})).pop()
                 print(f"# PS: ComfyUI task interrupted/error detected: {interrupted_key}")
                 await _handle_generation_interrupted(msg, interrupted_key)
-
             elif msg.keys() & _PROGRESS_KEYS and current_generating_client_id:
                 # Directed progress → only to the generating client
                 if current_generating_client_id in clients:
@@ -752,7 +811,6 @@ async def handle_message(client_id: str, platform: str, data: str):
                 await send_message(photoshop_users, "", json.dumps(msg))
         except Exception as e:
             print(f"# PS: error from ComfyUI: {e}")
-
     elif platform == "ps":
         try:
             if msg.get("queue") is True:
@@ -770,7 +828,7 @@ async def handle_message(client_id: str, platform: str, data: str):
 #  Generate request / cancel / forward
 # ──────────────────────────────────────────────
 async def handle_ps_generate_request(client_id: str, msg: dict):
-    # Dedup
+            
     if is_client_in_queue(client_id):
         print(f"# PS: Duplicate request from {client_id} ignored")
         pos = next((i + 1 for i, it in enumerate(ps_combinedData)
@@ -781,12 +839,13 @@ async def handle_ps_generate_request(client_id: str, msg: dict):
             "position": pos,
         }))
         return
+    
     if not add_to_queue(client_id, msg):
         return
-
-    # ★ 广播队列状态给所有客户端
+    
+    
+    
     await broadcast_queue_status()
-
     pos = len(ps_combinedData)
     await send_to_target_client(client_id, json.dumps({
         "type": "queueStatus",
@@ -803,23 +862,19 @@ async def process_and_forward_to_comfyui(msg: dict):
     first = get_queue_first()
     if not first:
         return
-
     client_id = first["client_id"]
     current_generating_client_id = client_id
     current_batch_sent = 0
     current_batch_total = msg.get("batch_size", 1)
-    generation_start_time = time.time()  # ★ Start time
+    generation_start_time = time.time()
     generation_started = False 
     task_id = str(uuid.uuid4())
     first["task_id"] = task_id
     print(f"# PS: Starting generation for {client_id}, task_id: {task_id}")
-
     try:
-        # ★ 记录当前正在生成的客户端ID供Node读取
         active_client_file = os.path.join(ps_inputs_directory, "active_client.txt")
         with open(active_client_file, "w") as f:
             f.write(client_id)
-
         if msg.get("canvasBase64"):
             await save_file(msg["canvasBase64"], "PS_canvas.png", client_id)
         if msg.get("maskBase64"):
@@ -829,11 +884,32 @@ async def process_and_forward_to_comfyui(msg: dict):
             if isinstance(cfg, str):
                 cfg = json.loads(cfg)
             await save_config(cfg, client_id)
-
+        
+        # Check for duplicates after saving the config.
+        if is_duplicate_task_from_config(client_id):
+            print(f"# PS: Duplicate task detected for {client_id} "
+                  f"(same seed & prompt), removing from queue")
+            # Remove from queue
+            ps_combinedData.pop(0)
+            current_generating_client_id = None
+            # Notification client
+            await send_to_target_client(client_id, json.dumps({
+                "type": "duplicateTaskSkipped",
+                "message": "Same seed and prompt as last generation. Task skipped.",
+                "reason": "duplicate_parameters",
+                "suggestion": "Please change seed or prompt to generate a new image.",
+            }))
+            
+            await broadcast_queue_status()            
+            if ps_combinedData:
+                await start_next_generation()
+            return
+        
+        # Record fingerprints (after successful team joining)
+        record_task_fingerprint_from_config(client_id)               
         await send_to_paired_comfyui(
             client_id, "", json.dumps({"queue": True, "task_id": task_id})
-       )
-       # ★ Start fast failure detection
+        )
         asyncio.ensure_future(_quick_fail_check(client_id, task_id)) 
     except Exception as e:
         print(f"# PS: Error processing combinedData: {e}")
