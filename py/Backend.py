@@ -19,8 +19,6 @@ import folder_paths
 from server import PromptServer
 import functools
 import glob
-import hashlib
-
 # ──────────────────────────────────────────────
 #  Paths
 # ──────────────────────────────────────────────
@@ -38,7 +36,9 @@ ps_inputs_directory = os.path.join(nodepath, "data", "ps_inputs")
 clients: dict = {}
 photoshop_users: list = []
 comfyui_users: list = []
-GENERATION_TIMEOUT = 300  # 5分钟超时
+# # 10分钟超时（设置单个任务总时长，超过踢出队列）
+# 10-minute timeout (sets the total duration for a single task; tasks that time out will be removed from the queue).
+GENERATION_TIMEOUT = 600  # 10分钟
 generation_start_time: float = 0
 QUICK_FAIL_TIMEOUT = 10  # prompt rapid loss
 generation_started: bool = False  # True = ComfyUI 已发出 execution_start
@@ -49,7 +49,7 @@ ps_combinedData: list = []
 current_generating_client_id: str | None = None
 current_batch_total: int = 0
 current_batch_sent: int = 0
-
+current_task_id: str | None = None  # 新增：当前任务 ID
 # Disconnected-client IP map (for reconnect matching)
 disconnected_clients_ip: dict = {}
 
@@ -77,61 +77,6 @@ def _cache_size() -> int:
 async def _check_and_clear_cache():
     if _cache_size() > RENDER_CACHE_MAX_SIZE:
         render_cache.clear()
-
-
-
-# ──────────────────────────────────────────────
-#  Task fingerprint cache (detect duplicate seed/prompt)
-# ──────────────────────────────────────────────
-last_task_fingerprint: dict = {}  # {client_id: fingerprint_hash}
-
-def compute_task_fingerprint_from_config(client_id: str) -> str:
-    """
-    Seed and clue words, calculate fingerprint。
-    
-    """
-    config_file = os.path.join(ps_inputs_directory, f"{client_id}_config.json")
-    
-    try:
-        with open(config_file, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-    except Exception as e:
-        print(f"# PS: [Fingerprint] Failed to read config for {client_id}: {e}")
-        return None
-    
-    seed = cfg.get("seed")
-    prompt = cfg.get("positive", "") or ""
-    negative_prompt = cfg.get("negative", "") or ""
-    
-    key_fields = {
-        "seed": seed,
-        "prompt": prompt,
-        "negative_prompt": negative_prompt,
-    }
-    raw = json.dumps(key_fields, sort_keys=True)
-    fingerprint = hashlib.md5(raw.encode()).hexdigest()
-    # print(f"# PS: [Fingerprint] client={client_id}, seed={seed}, "
-         # f"prompt={prompt[:30] if prompt else '(empty)'}..., hash={fingerprint}")
-    return fingerprint
-
-def is_duplicate_task_from_config(client_id: str) -> bool:
-    """Check if the two fingerprints are the same"""
-    current_fp = compute_task_fingerprint_from_config(client_id)
-    if current_fp is None:
-        return False
-    last_fp = last_task_fingerprint.get(client_id)
-    is_dup = last_fp is not None and last_fp == current_fp
-    # print(f"# PS: [Duplicate Check] client={client_id}, current_fp={current_fp}, "
-        #  f"last_fp={last_fp}, is_duplicate={is_dup}")
-    return is_dup
-
-def record_task_fingerprint_from_config(client_id: str):
-    """Record the fingerprint of the current task"""
-    fingerprint = compute_task_fingerprint_from_config(client_id)
-    if fingerprint:
-        last_task_fingerprint[client_id] = fingerprint
-        # print(f"# PS: [Record Fingerprint] client={client_id}, hash={fingerprint}")
-
 
 
 # ──────────────────────────────────────────────
@@ -335,7 +280,7 @@ async def _send_or_broadcast(msg_type: str, msg_data, description: str = "data")
 async def _complete_queue_head():
     """Pop the finished queue head, reset batch counters, start next task."""
     global current_generating_client_id, current_batch_sent, current_batch_total
-    global generation_start_time, generation_started  # ★ 新增
+    global generation_start_time, generation_started 
     completed = ps_combinedData.pop(0)
     print(f"# PS: Removed {completed['client_id']} from queue. "
           f"Remaining: {len(ps_combinedData)}")
@@ -431,33 +376,89 @@ async def cleanup_cancelled_records():
     for ip in expired:
         del cancelled_task_ips[ip]
 
+# ──────────────────────────────────────────────
+#  对蒙片，图片等获取ID(Obtain ID from masks, images, etc.)
+# ──────────────────────────────────────────────
 
+
+
+@PromptServer.instance.routes.get("/ps/current_task")
+async def get_current_task(request):
+    """
+    供 nodePlugin 查询当前任务信息
+    Provides nodePlugin with information on the current task.
+    """
+    if current_generating_client_id and current_task_id:
+        first = get_queue_first()
+        return web.json_response({
+            "client_id": current_generating_client_id,
+            "task_id": current_task_id,
+            "has_active_task": True,
+            "batch_total": current_batch_total,
+            "batch_sent": current_batch_sent,
+            "prompt_id": first.get("prompt_id") if first else None
+        })
+    return web.json_response({
+        "client_id": "",
+        "task_id": "",
+        "has_active_task": False,
+        "batch_total": 0,
+        "batch_sent": 0,
+        "prompt_id": None
+    })
+
+
+@PromptServer.instance.routes.get("/ps/active_client_id")
+async def get_active_client_id(request):
+    
+    # 1. Queue mode: Returns the currently generated client.
+    if current_generating_client_id:
+        return web.json_response({"client_id": current_generating_client_id})
+    
+    # 2. Single-user mode: Matching by IP
+    request_ip = request.remote or request.headers.get("X-Forwarded-For", "unknown")
+    for ps_id in photoshop_users:
+        if clients.get(ps_id, {}).get("ip") == request_ip:
+            return web.json_response({"client_id": ps_id})
+    
+    # 3. 无匹配
+    return web.json_response({"client_id": ""})
 # ──────────────────────────────────────────────
 #  HTTP routes – render binary / cache
 # ──────────────────────────────────────────────
 @PromptServer.instance.routes.post("/ps/render_binary")
 async def render_binary(request):
-    global render_cache
+    global render_cache, current_batch_sent
     try:
         idx = int(request.headers.get("X-Image-Index", "0"))
         count = int(request.headers.get("X-Image-Count", "1"))
         filename = request.headers.get("X-Filename", f"render_{idx}.png")
-
         data = await request.read()
         async with render_cache_lock:
             if idx == 0:
                 await _check_and_clear_cache()
             render_cache[filename] = data
-
+        
+        current_batch_sent = idx + 1
+        
         # Last image of the batch
         if idx == count - 1:
             files = [f"render_{i}.png" for i in range(count)]
-            await _send_or_broadcast(
-                "renders_ready",
-                {"count": count, "files": files},
-                description=f"renders_ready ({count} images)",
-            )
-
+            
+            if ps_combinedData:
+                first = ps_combinedData[0]
+                target = _resolve_target_client(first)
+                if target:
+                    payload = json.dumps({"renders_ready": {"count": count, "files": files}})
+                    ok = await _send_to_client_ws(target, payload)
+                    if ok:
+                        print(f"# PS: renders_ready ({count} images) sent to {target}")
+              
+                await _complete_queue_head()
+            else:
+                print(f"# PS: Queue empty, broadcasting renders_ready ({count} images)")
+                await send_message(photoshop_users, "renders_ready", {"count": count, "files": files})
+        
         return web.json_response({"success": True, "index": idx, "count": count})
     except Exception as e:
         print(f"# PS: Render binary error: {e}")
@@ -715,7 +716,7 @@ async def _handle_generation_interrupted(msg: dict, interrupt_key: str):
         return
 
     interrupted_client_id = current_generating_client_id
-    print(f"# PS: Generation interrupted for client {interrupted_client_id} "
+    print(f"# PS: Repetitive tasks {interrupted_client_id} "
           f"(reason: {interrupt_key})")
 
     # 1. Notify the interrupted client
@@ -782,6 +783,7 @@ _INTERRUPT_KEYS = frozenset([
 async def handle_message(client_id: str, platform: str, data: str):
     global current_generating_client_id, current_batch_total, current_batch_sent
     msg = json.loads(data)
+
     if platform == "cm":
         try:
             if "pullupdate" in msg:
@@ -790,16 +792,13 @@ async def handle_message(client_id: str, platform: str, data: str):
                 force_pull()
             elif "install_plugin" in msg:
                 install_plugin()
-            # ★ 特殊处理 execution_cached
-            elif "execution_cached" in msg:
-                print(f"# PS: ComfyUI execution_cached detected, "
-                      f"clearing queue for {current_generating_client_id}")
-                await _handle_generation_interrupted(msg, "execution_cached")
-            # ★ 其他中断事件
-            elif msg.keys() & (_INTERRUPT_KEYS - {"execution_cached"}):
-                interrupted_key = (msg.keys() & (_INTERRUPT_KEYS - {"execution_cached"})).pop()
+
+            # ★ Detecting abnormal interruption or termination of ComfyUI tasks by the user.
+            elif msg.keys() & _INTERRUPT_KEYS:
+                interrupted_key = (msg.keys() & _INTERRUPT_KEYS).pop()
                 print(f"# PS: ComfyUI task interrupted/error detected: {interrupted_key}")
                 await _handle_generation_interrupted(msg, interrupted_key)
+
             elif msg.keys() & _PROGRESS_KEYS and current_generating_client_id:
                 # Directed progress → only to the generating client
                 if current_generating_client_id in clients:
@@ -811,6 +810,7 @@ async def handle_message(client_id: str, platform: str, data: str):
                 await send_message(photoshop_users, "", json.dumps(msg))
         except Exception as e:
             print(f"# PS: error from ComfyUI: {e}")
+
     elif platform == "ps":
         try:
             if msg.get("queue") is True:
@@ -828,7 +828,7 @@ async def handle_message(client_id: str, platform: str, data: str):
 #  Generate request / cancel / forward
 # ──────────────────────────────────────────────
 async def handle_ps_generate_request(client_id: str, msg: dict):
-            
+    # Dedup
     if is_client_in_queue(client_id):
         print(f"# PS: Duplicate request from {client_id} ignored")
         pos = next((i + 1 for i, it in enumerate(ps_combinedData)
@@ -839,13 +839,12 @@ async def handle_ps_generate_request(client_id: str, msg: dict):
             "position": pos,
         }))
         return
-    
     if not add_to_queue(client_id, msg):
         return
-    
-    
-    
+
+    # ★ 广播队列状态给所有客户端
     await broadcast_queue_status()
+
     pos = len(ps_combinedData)
     await send_to_target_client(client_id, json.dumps({
         "type": "queueStatus",
@@ -862,19 +861,23 @@ async def process_and_forward_to_comfyui(msg: dict):
     first = get_queue_first()
     if not first:
         return
+
     client_id = first["client_id"]
     current_generating_client_id = client_id
     current_batch_sent = 0
     current_batch_total = msg.get("batch_size", 1)
-    generation_start_time = time.time()
+    generation_start_time = time.time()  # ★ Start time
     generation_started = False 
     task_id = str(uuid.uuid4())
     first["task_id"] = task_id
     print(f"# PS: Starting generation for {client_id}, task_id: {task_id}")
+
     try:
+        # ★ 记录当前正在生成的客户端ID供Node读取
         active_client_file = os.path.join(ps_inputs_directory, "active_client.txt")
         with open(active_client_file, "w") as f:
             f.write(client_id)
+
         if msg.get("canvasBase64"):
             await save_file(msg["canvasBase64"], "PS_canvas.png", client_id)
         if msg.get("maskBase64"):
@@ -884,32 +887,11 @@ async def process_and_forward_to_comfyui(msg: dict):
             if isinstance(cfg, str):
                 cfg = json.loads(cfg)
             await save_config(cfg, client_id)
-        
-        # Check for duplicates after saving the config.
-        if is_duplicate_task_from_config(client_id):
-            print(f"# PS: Duplicate task detected for {client_id} "
-                  f"(same seed & prompt), removing from queue")
-            # Remove from queue
-            ps_combinedData.pop(0)
-            current_generating_client_id = None
-            # Notification client
-            await send_to_target_client(client_id, json.dumps({
-                "type": "duplicateTaskSkipped",
-                "message": "Same seed and prompt as last generation. Task skipped.",
-                "reason": "duplicate_parameters",
-                "suggestion": "Please change seed or prompt to generate a new image.",
-            }))
-            
-            await broadcast_queue_status()            
-            if ps_combinedData:
-                await start_next_generation()
-            return
-        
-        # Record fingerprints (after successful team joining)
-        record_task_fingerprint_from_config(client_id)               
+
         await send_to_paired_comfyui(
             client_id, "", json.dumps({"queue": True, "task_id": task_id})
-        )
+       )
+       # ★ Start fast failure detection
         asyncio.ensure_future(_quick_fail_check(client_id, task_id)) 
     except Exception as e:
         print(f"# PS: Error processing combinedData: {e}")
@@ -917,38 +899,90 @@ async def process_and_forward_to_comfyui(msg: dict):
 
 async def _quick_fail_check(client_id: str, task_id: str):
     """
-    在发送 queue 指令后短暂等待，
-    如果 ComfyUI 快速返回错误（如 prompt 验证失败），
-    则客户端已被 Hook 移除，无需额外处理。
-    如果超时后客户端仍在队列且无进展，可能是卡住了。
-
-    After sending the queue command, wait briefly.
-    If ComfyUI quickly returns an error (such as a prompt indicating verification failure),
-    the client has been removed from the hook and requires no further processing.
-    If the client remains in the queue without progressing after a timeout, it may be stuck.
+    在发送 queue 指令后等待 3 秒，
+    检测任务是否正常进行或已完成。
+    如果 ComfyUI 没有运行中的任务，且客户端仍在队列头部，
+    则认为是异常情况，需要移除客户端。
+    After sending the queue command, wait 3 seconds,
+    and check if the task is progressing normally or has been completed.
+    If ComfyUI has no running tasks and the client is still at the head of the queue,
+    this is considered an abnormal situation, and the client needs to be removed.
     """
-    global generation_started 
-    await asyncio.sleep(QUICK_FAIL_TIMEOUT)
-    # ★ 如果 generation_started 为 True，说明任务已经在执行，
-   
-    if generation_started:
-        # print(f"# PS: [QuickFail] Skipped for {client_id} — "
-             # f"execution_start was received, task is running normally")
+    global generation_started
+    
+    # 等待 3 秒后检测
+    await asyncio.sleep(3)
+    
+    # Check if the current client is still at the head of the queue and is a client that is being generated.
+    first = get_queue_first()
+    if not first:
+        print(f"# PS: [QuickFail] Queue is empty, task for {client_id} already completed")
         return
     
-    first = get_queue_first()
-    if (first
-            and first["client_id"] == client_id
-            and first.get("task_id") == task_id
-            and current_batch_sent == 0
-            and current_generating_client_id == client_id):
+    if first["client_id"] != client_id or first.get("task_id") != task_id:    
+        print(f"# PS: [QuickFail] Client {client_id} no longer at queue head, skipping")
+        return
+    
+    if current_generating_client_id != client_id:
         
-        print(f"# PS: [QuickFail] No progress for {client_id} after "
-              f"{QUICK_FAIL_TIMEOUT}s, likely prompt validation failed")
-        await _handle_generation_interrupted(
-            {"event": "quick_fail_timeout", "data": {}},
-            "quick_fail_timeout"
-        )
+        print(f"# PS: [QuickFail] Current generating client changed, skipping")
+        return
+    
+    # If the image has already been sent, it means the task has been completed but the queue has not been cleared (an anomaly).
+    if current_batch_sent > 0:
+        print(f"# PS: [QuickFail] Images already sent ({current_batch_sent}), "
+              f"forcing queue cleanup for {client_id}")
+        await _complete_queue_head()
+        return
+    
+    # Check if ComfyUI has any running tasks.
+    has_running_task = await _check_comfyui_running_tasks()
+    
+    if has_running_task:
+        
+        print(f"# PS: [QuickFail] ComfyUI has running tasks, "
+              f"generation for {client_id} is proceeding normally")
+        return
+    
+    # There are no running tasks, the client is still at the head of the queue, and no images have been sent.
+    # In abnormal situations, the client needs to be removed.
+    print(f"# PS: [QuickFail] No running tasks in ComfyUI, no images sent, "
+          f"client {client_id} still at queue head after 3s, removing")
+    
+    await _handle_generation_interrupted(
+        {"event": "quick_fail_timeout", "data": {"reason": "no_running_tasks_detected"}},
+        "quick_fail_timeout"
+    )
+
+async def _check_comfyui_running_tasks() -> bool:
+    """
+    Check if there are any running tasks.
+    Returning True indicates that there are running tasks.
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{COMFYUI_API_BASE}/queue", timeout=aiohttp.ClientTimeout(total=5)) as response:
+                if response.status == 200:
+                    queue_data = await response.json()
+                    
+                    running = queue_data.get("queue_running", [])
+                    if running and len(running) > 0:
+                        print(f"# PS: [QueueCheck] ComfyUI has {len(running)} running task(s)")
+                        return True
+                    else:
+                        print(f"# PS: [QueueCheck] ComfyUI has no running tasks")
+                        return False
+                else:
+                    print(f"# PS: [QueueCheck] Failed to query ComfyUI queue, status: {response.status}")
+                   
+                    return True
+    except asyncio.TimeoutError:
+        print(f"# PS: [QueueCheck] Timeout querying ComfyUI queue")
+        return True
+    except Exception as e:
+        print(f"# PS: [QueueCheck] Error querying ComfyUI queue: {e}")        
+        return True
+
 
 
 
@@ -1132,24 +1166,34 @@ print("# PS: Hooked into PromptServer.send_sync for interrupt/error detection")
 cleanup_stale_client_files() 
 
 
-# 超时自动移除客户端（Automatically remove client after timeout）
 async def _check_generation_timeout():
     global current_generating_client_id, generation_start_time
     while True:
         await asyncio.sleep(5)  # 每5秒检查一次
-
         if not current_generating_client_id or not generation_start_time:
             continue
-
         elapsed = time.time() - generation_start_time
         if elapsed > GENERATION_TIMEOUT:
             print(f"# PS: [Timeout] Generation for {current_generating_client_id} "
                   f"timed out after {elapsed:.0f}s, force removing from queue")
+            
+            # Get the prompt_id of the current task to cancel the task in the queue.
+            first = get_queue_first()
+            if first:
+                prompt_id = first.get("prompt_id")
+                if prompt_id:
+                    await cancel_comfyui_queued_task(prompt_id)
+            
+            # Force interrupt the currently executing task in ComfyUI
+            await cancel_comfyui_current_task()
+            
+            # Handle the interruption, remove the client, and start the next task.
             await _handle_generation_interrupted(
                 {"event": "generation_timeout",
                  "data": {"elapsed": elapsed}},
                 "generation_timeout"
             )
+
 
 asyncio.ensure_future(_check_generation_timeout())
 
