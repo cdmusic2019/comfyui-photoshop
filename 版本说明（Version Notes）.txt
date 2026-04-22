@@ -34,10 +34,12 @@
 优化日历：
 
     最新优化：
+
+   2026.4.22：
+     对V 2.0版本进行了优化，由于我的失误，上次发布是插件端版本错了，发送的是raw格式，服务端无法解析，无法生成图片，我重新替换成正确版本了，顺便修复了提示词和种子同步，请重新下载
+     https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
+
    2026.4.4： 对V1.93版本仓库更新了多用户支持，支持局域网中多台PS同时连接同一台comfyui服务器进行生图，生成任务采用队列的方式进行，并进行了队列的优化。
-
-   2026.3.16，我上传了一个优化了V2.049版本，插件源码来源于原插件作者NimaNzrii发布的试用体验版本（目前无注册，但可以免费体验软件全部功能），因为作者长时间未更新，有些功能不能正常使用了，我优化了一下，让你可以继续体验V2.0版本，因为源码暂未开源，所以未更新到仓库，至于体验时间到多久，由作者NimaNzrii 决定，如果你有想法或需要长期合作，请联系插件作者NimaNzrii，下载体验地址：https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
-
 
     2026.1.30
     添加了云端支持。把IP优化为动态IP，动态端口，支持本地PS连接上云端comfyui使用.(前提条件是需要云端能完整的安装本插件，包括运行插件的JS代码)
@@ -51,15 +53,14 @@
 
 
 
-2026.4.4
-  Updated the V1.93 repository with multi-user support, allowing multiple PS instances on the local network to connect to the same ComfyUI server for image generation. Generation tasks are now managed using a queue system, and queue optimizations have been implemented.
-
- 2026.3.16
-  I uploaded an optimized version of V2.049. This plugin is a trial version originally released by the author NimaNzrii (currently no registration is required, and all features of the software can be experienced for free). Since the author has not released updates for a long time, some features were no longer functioning properly. I have made optimizations to allow you to continue experiencing the V2.0 version. As the source code has not been open-sourced yet, it has not been updated to the repository. The duration of this trial experience is determined by the author, NimaNzrii. If you have any ideas or require long-term collaboration, please contact the plugin author, NimaNzrii.
+2026.4.22
+  The prompt word and torrent synchronization have been fixed. Please download again.
 
    Download and experience it here:
 https://github.com/cdmusic2019/comfyui-photoshop/releases/tag/comfyui-photoshop_v2.049(speed2)
 
+2026.4.4
+  Updated the V1.93 repository with multi-user support, allowing multiple PS instances on the local network to connect to the same ComfyUI server for image generation. Generation tasks are now managed using a queue system, and queue optimizations have been implemented.
 
     2026.1.24
     Refactored the integration of Photoshop → ComfyUI to achieve fine-grained, deterministic caching while maintaining a streamlined and backward-compatible workflow. Optimized the IS_CHANGED function and caching mechanism for faster processing.
